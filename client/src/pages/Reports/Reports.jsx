@@ -1,8 +1,10 @@
+import DashboardLayout from "../../components/layout/DashboardLayout";
+
 function Reports() {
   return (
-    <div className="flex items-center justify-center h-screen text-4xl font-bold">
-      Reports Page
-    </div>
+    <DashboardLayout>
+      <h1 className="text-3xl font-bold">Reports</h1>
+    </DashboardLayout>
   );
 }
 

@@ -1,8 +1,10 @@
+import DashboardLayout from "../../components/layout/DashboardLayout";
+
 function Upload() {
   return (
-    <div className="flex items-center justify-center h-screen text-4xl font-bold">
-      Upload Page
-    </div>
+    <DashboardLayout>
+      <h1 className="text-3xl font-bold">Upload CSV</h1>
+    </DashboardLayout>
   );
 }
 

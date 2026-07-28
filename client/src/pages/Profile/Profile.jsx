@@ -1,8 +1,10 @@
+import DashboardLayout from "../../components/layout/DashboardLayout";
+
 function Profile() {
   return (
-    <div className="flex items-center justify-center h-screen text-4xl font-bold">
-      Profile Page
-    </div>
+    <DashboardLayout>
+      <h1 className="text-3xl font-bold">Profile</h1>
+    </DashboardLayout>
   );
 }
 
