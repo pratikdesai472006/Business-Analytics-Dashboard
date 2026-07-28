@@ -1,11 +1,7 @@
+import { useState } from "react";
+import { Camera, ShieldCheck, Monitor } from "lucide-react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
-
-function Profile() {
-  return (
-    <DashboardLayout>
-      <h1 className="text-3xl font-bold">Profile</h1>
-    </DashboardLayout>
-  );
-}
-
+import PageHeader from "../../components/common/PageHeader";
+import { useAuth } from "../../context/AuthContext";
+function Profile(){const {user}=useAuth();const [saved,setSaved]=useState(false);const initials=(user?.fullName||'U').split(' ').map(x=>x[0]).join('').slice(0,2);return <DashboardLayout><PageHeader eyebrow="Account settings" title="Your profile" description="Manage your personal details and workspace security."/><div className="grid gap-5 xl:grid-cols-3"><section className="surface p-6 xl:col-span-2"><h3 className="font-bold">Personal information</h3><div className="mt-6 flex items-center gap-4"><div className="grid place-items-center w-16 h-16 rounded-full bg-blue-600 text-lg font-bold text-white">{initials}</div><div><button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold"><Camera size={15}/> Change avatar</button><p className="mt-1 text-xs text-slate-500">JPG, GIF or PNG. Max 2MB.</p></div></div><form onSubmit={e=>{e.preventDefault();setSaved(true)}} className="grid gap-4 mt-7 sm:grid-cols-2"><label className="text-sm font-semibold">Full name<input defaultValue={user?.fullName} className="form-input mt-2 font-normal"/></label><label className="text-sm font-semibold">Email address<input defaultValue={user?.email} type="email" className="form-input mt-2 font-normal"/></label><div className="sm:col-span-2 flex items-center gap-3"><button className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white">Save changes</button>{saved&&<span className="text-sm text-emerald-600">Changes saved locally.</span>}</div></form></section><aside className="surface p-6"><h3 className="font-bold">Account</h3><div className="mt-5 space-y-5"><div><p className="text-sm font-semibold">Workspace role</p><p className="text-xs text-slate-500 mt-1">Administrator</p></div><div><p className="text-sm font-semibold">Member since</p><p className="text-xs text-slate-500 mt-1">July 2026</p></div></div></aside></div><section className="surface mt-5 p-6"><h3 className="font-bold">Security</h3><div className="grid gap-4 mt-5 md:grid-cols-2"><div className="rounded-xl border border-slate-200 p-4"><span className="grid place-items-center w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600"><ShieldCheck size={18}/></span><p className="mt-3 text-sm font-semibold">Password protection</p><p className="mt-1 text-xs text-slate-500">Keep your account secure with a strong password.</p><button className="mt-4 text-sm font-semibold text-blue-600">Update password</button></div><div className="rounded-xl border border-slate-200 p-4"><span className="grid place-items-center w-9 h-9 rounded-lg bg-blue-50 text-blue-600"><Monitor size={18}/></span><p className="mt-3 text-sm font-semibold">Active session</p><p className="mt-1 text-xs text-slate-500">This browser · Current session</p><button className="mt-4 text-sm font-semibold text-blue-600">Review sessions</button></div></div></section></DashboardLayout>}
 export default Profile;

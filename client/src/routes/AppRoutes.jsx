@@ -14,7 +14,7 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Redirect Root */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />
@@ -67,7 +67,7 @@ function AppRoutes() {
       />
 
       {/* Unknown Route */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }

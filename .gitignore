@@ -6,6 +6,7 @@ client/dist/
 server/node_modules/
 server/.env
 server/uploads/
+server/receipts/
 
 # VS Code
 .vscode/
