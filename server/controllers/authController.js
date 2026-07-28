@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const {
   findUserByEmail,
   createUser,
+  findUserForLogin,
 } = require("../services/authService");
 
 const generateToken = require("../utils/generateToken");
@@ -48,6 +49,58 @@ const register = async (req, res) => {
   }
 };
 
+
+
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "All fields are required",
+      });
+    }
+
+    const user = await findUserForLogin(email);
+
+    if (user.length === 0) {
+      return res.status(401).json({
+        message: "Invalid email or password",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(
+      password,
+      user[0].password
+    );
+
+    if (!isMatch) {
+      return res.status(401).json({
+        message: "Invalid email or password",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Login Successful",
+      token: generateToken(user[0].id),
+      user: {
+        id: user[0].id,
+        fullName: user[0].full_name,
+        email: user[0].email,
+      },
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Server Error",
+    });
+  }
+};
+
 module.exports = {
   register,
+  login,
 };
