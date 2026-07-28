@@ -1,22 +1,33 @@
+import { useState } from "react";
+import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 
-function DashboardLayout({ children }) {
+function DashboardLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
-    <div className="flex">
+    <div className="min-h-screen bg-background">
+      <Sidebar
+        mobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
+        collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed((c) => !c)}
+      />
 
-      <Sidebar />
-
-      <div className="ml-64 flex-1 bg-gray-100 min-h-screen">
-
-        <Navbar />
-
-        <div className="p-8">
-          {children}
-        </div>
-
+      <div
+        className={`flex min-h-screen flex-col transition-[padding] duration-300 ${
+          collapsed ? "lg:pl-[76px]" : "lg:pl-64"
+        }`}
+      >
+        <Navbar onMenuClick={() => setSidebarOpen(true)} />
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-[1400px]">
+            <Outlet />
+          </div>
+        </main>
       </div>
-
     </div>
   );
 }

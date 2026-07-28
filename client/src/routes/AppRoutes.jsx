@@ -8,66 +8,34 @@ import Reports from "../pages/Reports/Reports";
 import Profile from "../pages/Profile/Profile";
 import Forecast from "../pages/Forecast/Forecast";
 
+import DashboardLayout from "../components/layout/DashboardLayout";
 import ProtectedRoute from "./ProtectedRoute";
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* Redirect Root */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Protected Routes */}
+      {/* Protected Routes wrapped in the dashboard shell */}
       <Route
-        path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <DashboardLayout />
           </ProtectedRoute>
         }
-      />
-
-      <Route
-        path="/upload"
-        element={
-          <ProtectedRoute>
-            <Upload />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/reports"
-        element={
-          <ProtectedRoute>
-            <Reports />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/forecast"
-        element={
-          <ProtectedRoute>
-            <Forecast />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <Profile />
-          </ProtectedRoute>
-        }
-      />
+      >
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/upload" element={<Upload />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/forecast" element={<Forecast />} />
+        <Route path="/profile" element={<Profile />} />
+      </Route>
 
       {/* Unknown Route */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }

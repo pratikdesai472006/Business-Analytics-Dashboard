@@ -13,6 +13,10 @@
     "@tailwindcss/vite": "^4.3.3",
     "axios": "^1.18.1",
     "chart.js": "^4.5.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "lucide-react": "^1.27.0",
+    "papaparse": "^5.5.4",
     "react": "^19.2.7",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.7",
@@ -21,7 +25,8 @@
     "react-toastify": "^11.1.0",
     "recharts": "^3.10.1",
     "sweetalert2": "^11.26.25",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
