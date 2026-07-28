@@ -1,3 +1,45 @@
 import { ArrowUpRight } from "lucide-react";
-const tones={blue:"bg-blue-50 text-blue-600",violet:"bg-violet-50 text-violet-600",emerald:"bg-emerald-50 text-emerald-600",amber:"bg-amber-50 text-amber-600"};
-export default function StatCard({ label, value, change, icon: Icon, tone="blue", onClick }) { const content=<><div className="flex justify-between"><span className="text-sm font-medium text-slate-500">{label}</span><span className={`grid place-items-center w-10 h-10 rounded-xl ${tones[tone]||tones.blue}`}><Icon size={19}/></span></div><p className="mt-5 text-2xl font-bold tracking-tight">{value}</p><p className="mt-2 flex items-center gap-1 text-xs font-semibold text-emerald-600"><ArrowUpRight size={14}/>{change}<span className="font-normal text-slate-400">vs. last month</span></p></>; return onClick?<button onClick={onClick} className="surface metric-card w-full text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" aria-label={`View ${label} details`}>{content}</button>:<article className="surface metric-card">{content}</article> }
+const tones = {
+  blue: "bg-blue-50 text-blue-600",
+  violet: "bg-violet-50 text-violet-600",
+  emerald: "bg-emerald-50 text-emerald-600",
+  amber: "bg-amber-50 text-amber-600",
+};
+export default function StatCard({
+  label,
+  value,
+  change,
+  icon: Icon,
+  tone = "blue",
+  onClick,
+}) {
+  const content = (
+    <>
+      <div className="flex justify-between">
+        <span className="text-sm font-medium text-slate-500">{label}</span>
+        <span
+          className={`grid place-items-center w-10 h-10 rounded-xl ${tones[tone] || tones.blue}`}
+        >
+          <Icon size={19} />
+        </span>
+      </div>
+      <p className="mt-5 text-2xl font-bold tracking-tight">{value}</p>
+      <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-emerald-600">
+        <ArrowUpRight size={14} />
+        {change}
+        <span className="font-normal text-slate-400">vs. last month</span>
+      </p>
+    </>
+  );
+  return onClick ? (
+    <button
+      onClick={onClick}
+      className="surface metric-card w-full text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      aria-label={`View ${label} details`}
+    >
+      {content}
+    </button>
+  ) : (
+    <article className="surface metric-card">{content}</article>
+  );
+}

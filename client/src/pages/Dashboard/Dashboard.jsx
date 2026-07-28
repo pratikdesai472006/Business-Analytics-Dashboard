@@ -1,12 +1,291 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AreaChart, Area, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Users, ShoppingCart, WalletCards, TrendingUp, ArrowUpRight, Upload, FileText, Plus } from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  Users,
+  ShoppingCart,
+  WalletCards,
+  TrendingUp,
+  ArrowUpRight,
+  Upload,
+  FileText,
+  Plus,
+} from "lucide-react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import StatCard from "../../components/common/StatCard";
 import PageHeader from "../../components/common/PageHeader";
 import Badge from "../../components/common/Badge";
 import api from "../../api/axios";
-const revenue=[{m:"Jan '25",v:36},{m:"Feb",v:43},{m:"Mar",v:39},{m:"Apr",v:57},{m:"May",v:51},{m:"Jun",v:68},{m:"Jul",v:72},{m:"Aug",v:88},{m:"Sep",v:84},{m:"Oct",v:103},{m:"Nov",v:96},{m:"Dec",v:118},{m:"Jan '26",v:111},{m:"Feb",v:124},{m:"Mar",v:129},{m:"Apr",v:144},{m:"May",v:138},{m:"Jun",v:156},{m:"Jul",v:168},{m:"Aug",v:181},{m:"Sep",v:174},{m:"Oct",v:194},{m:"Nov",v:207},{m:"Dec",v:226}];
-function Dashboard(){const nav=useNavigate();const [period,setPeriod]=useState('12');const [orders,setOrders]=useState([]);useEffect(()=>{const token=localStorage.getItem('token');api.get('/orders',{headers:{Authorization:`Bearer ${token}`}}).then(r=>setOrders(r.data.orders)).catch(()=>setOrders([]));},[]);const chartData=useMemo(()=>period==='all'?revenue:revenue.slice(-Number(period)),[period]);const go=(category)=>nav(`/reports?category=${encodeURIComponent(category)}`);const updateOrder=async(id)=>{const token=localStorage.getItem('token');await api.patch(`/orders/${id}/status`,{status:'Paid'},{headers:{Authorization:`Bearer ${token}`}});setOrders(orders.map(order=>order.id===id?{...order,status:'Paid'}:order));};return <DashboardLayout><PageHeader eyebrow="Overview" title="Performance at a glance" description="Track what is happening across your business today." action={<button onClick={()=>go('Revenue')} className="px-4 py-2.5 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-200">View live report <ArrowUpRight className="inline ml-1" size={16}/></button>}/><section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatCard onClick={()=>go('Revenue')} label="Total revenue" value="₹12.48L" change="18.2%" icon={WalletCards}/><StatCard onClick={()=>go('Sales')} label="Total orders" value="1,284" change="12.6%" icon={ShoppingCart} tone="violet"/><StatCard onClick={()=>go('Customers')} label="Active customers" value="8,249" change="8.4%" icon={Users} tone="emerald"/><StatCard onClick={()=>go('Growth')} label="Revenue growth" value="24.8%" change="4.1%" icon={TrendingUp} tone="amber"/></section><section className="grid grid-cols-1 gap-5 mt-5 xl:grid-cols-3"><article className="surface p-5 xl:col-span-2"><div className="flex items-start justify-between"><div><h3 className="font-bold">Revenue performance</h3><p className="mt-1 text-xs text-slate-500">Monthly recurring revenue in thousands</p></div><select value={period} onChange={e=>setPeriod(e.target.value)} className="form-input w-auto text-xs py-2" aria-label="Revenue period"><option value="3">Last 3 months</option><option value="6">Last 6 months</option><option value="12">Last 12 months</option><option value="24">Last 24 months</option><option value="all">All time</option></select></div><div className="h-75 mt-5"><ResponsiveContainer><AreaChart data={chartData}><defs><linearGradient id="revenue" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#2563eb" stopOpacity=".25"/><stop offset="100%" stopColor="#2563eb" stopOpacity="0"/></linearGradient></defs><CartesianGrid stroke="#eef2f7" vertical={false}/><XAxis dataKey="m" tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#94a3b8'}}/><YAxis tickLine={false} axisLine={false} tick={{fontSize:11,fill:'#94a3b8'}}/><Tooltip formatter={(value)=>[`₹${value}k`,"Revenue"]}/><Area type="monotone" dataKey="v" stroke="#2563eb" strokeWidth={3} fill="url(#revenue)"/></AreaChart></ResponsiveContainer></div></article><article className="surface p-5"><h3 className="font-bold">Business insights</h3><p className="mt-1 text-xs text-slate-500">Signals worth your attention</p><div className="mt-5 space-y-4"><div className="rounded-xl bg-emerald-50 p-4"><Badge tone="green">Opportunity</Badge><p className="mt-2 text-sm font-semibold">Growth plan conversions are up 31%.</p><p className="mt-1 text-xs text-slate-600">Consider prioritising this audience.</p></div><div className="rounded-xl bg-amber-50 p-4"><Badge tone="amber">Monitor</Badge><p className="mt-2 text-sm font-semibold">Churn rose slightly in the APAC segment.</p></div></div></article></section><section className="grid grid-cols-1 gap-5 mt-5 xl:grid-cols-3"><article className="surface p-5 xl:col-span-2"><div className="flex justify-between"><div><h3 className="font-bold">Latest orders</h3><p className="mt-1 text-xs text-slate-500">Change an order from unpaid or pending to paid.</p></div><button onClick={()=>go('Sales')} className="text-sm font-semibold text-blue-600">View all</button></div><div className="table-wrap mt-4"><table className="data-table"><thead><tr><th>Customer</th><th>Plan</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>{orders.map(x=><tr key={x.id}><td className="font-semibold">{x.customerName}</td><td>{x.product}</td><td>₹{Number(x.amount).toLocaleString('en-IN')}</td><td><Badge tone={x.status==='Paid'?'green':'amber'}>{x.status}</Badge></td><td>{x.status!=='Paid'&&<button onClick={()=>updateOrder(x.id)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">Mark as paid</button>}</td></tr>)}</tbody></table></div></article><article className="surface p-5"><h3 className="font-bold">Quick actions</h3><div className="mt-4 space-y-2"><button onClick={()=>nav('/upload')} className="w-full flex gap-3 items-center rounded-xl bg-blue-50 p-3 text-left text-sm font-semibold text-blue-700"><Upload size={17}/> Upload a dataset</button><button onClick={()=>nav('/reports')} className="w-full flex gap-3 items-center rounded-xl p-3 text-left text-sm font-semibold hover:bg-slate-50"><FileText size={17}/> Generate report</button><button onClick={()=>nav('/forecast')} className="w-full flex gap-3 items-center rounded-xl p-3 text-left text-sm font-semibold hover:bg-slate-50"><Plus size={17}/> Explore forecast</button></div></article></section></DashboardLayout>}
+const revenue = [
+  { m: "Jan '25", v: 36 },
+  { m: "Feb", v: 43 },
+  { m: "Mar", v: 39 },
+  { m: "Apr", v: 57 },
+  { m: "May", v: 51 },
+  { m: "Jun", v: 68 },
+  { m: "Jul", v: 72 },
+  { m: "Aug", v: 88 },
+  { m: "Sep", v: 84 },
+  { m: "Oct", v: 103 },
+  { m: "Nov", v: 96 },
+  { m: "Dec", v: 118 },
+  { m: "Jan '26", v: 111 },
+  { m: "Feb", v: 124 },
+  { m: "Mar", v: 129 },
+  { m: "Apr", v: 144 },
+  { m: "May", v: 138 },
+  { m: "Jun", v: 156 },
+  { m: "Jul", v: 168 },
+  { m: "Aug", v: 181 },
+  { m: "Sep", v: 174 },
+  { m: "Oct", v: 194 },
+  { m: "Nov", v: 207 },
+  { m: "Dec", v: 226 },
+];
+function Dashboard() {
+  const nav = useNavigate();
+  const [period, setPeriod] = useState("12");
+  const [orders, setOrders] = useState([]);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    api
+      .get("/orders", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => setOrders(r.data.orders))
+      .catch(() => setOrders([]));
+  }, []);
+  const chartData = useMemo(
+    () => (period === "all" ? revenue : revenue.slice(-Number(period))),
+    [period],
+  );
+  const go = (category) =>
+    nav(`/reports?category=${encodeURIComponent(category)}`);
+  const updateOrder = async (id) => {
+    const token = localStorage.getItem("token");
+    await api.patch(
+      `/orders/${id}/status`,
+      { status: "Paid" },
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    setOrders(
+      orders.map((order) =>
+        order.id === id ? { ...order, status: "Paid" } : order,
+      ),
+    );
+  };
+  return (
+    <DashboardLayout>
+      <PageHeader
+        eyebrow="Overview"
+        title="Performance at a glance"
+        description="Track what is happening across your business today."
+        action={
+          <button
+            onClick={() => go("Revenue")}
+            className="px-4 py-2.5 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-200"
+          >
+            View live report <ArrowUpRight className="inline ml-1" size={16} />
+          </button>
+        }
+      />
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          onClick={() => go("Revenue")}
+          label="Total revenue"
+          value="₹12.48L"
+          change="18.2%"
+          icon={WalletCards}
+        />
+        <StatCard
+          onClick={() => go("Sales")}
+          label="Total orders"
+          value="1,284"
+          change="12.6%"
+          icon={ShoppingCart}
+          tone="violet"
+        />
+        <StatCard
+          onClick={() => go("Customers")}
+          label="Active customers"
+          value="8,249"
+          change="8.4%"
+          icon={Users}
+          tone="emerald"
+        />
+        <StatCard
+          onClick={() => go("Growth")}
+          label="Revenue growth"
+          value="24.8%"
+          change="4.1%"
+          icon={TrendingUp}
+          tone="amber"
+        />
+      </section>
+      <section className="grid grid-cols-1 gap-5 mt-5 xl:grid-cols-3">
+        <article className="surface p-5 xl:col-span-2">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="font-bold">Revenue performance</h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Monthly recurring revenue in thousands
+              </p>
+            </div>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="form-input w-auto text-xs py-2"
+              aria-label="Revenue period"
+            >
+              <option value="3">Last 3 months</option>
+              <option value="6">Last 6 months</option>
+              <option value="12">Last 12 months</option>
+              <option value="24">Last 24 months</option>
+              <option value="all">All time</option>
+            </select>
+          </div>
+          <div className="h-75 mt-5">
+            <ResponsiveContainer>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="revenue" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#2563eb" stopOpacity=".25" />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="#eef2f7" vertical={false} />
+                <XAxis
+                  dataKey="m"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 11, fill: "#94a3b8" }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 11, fill: "#94a3b8" }}
+                />
+                <Tooltip formatter={(value) => [`₹${value}k`, "Revenue"]} />
+                <Area
+                  type="monotone"
+                  dataKey="v"
+                  stroke="#2563eb"
+                  strokeWidth={3}
+                  fill="url(#revenue)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+        <article className="surface p-5">
+          <h3 className="font-bold">Business insights</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Signals worth your attention
+          </p>
+          <div className="mt-5 space-y-4">
+            <div className="rounded-xl bg-emerald-50 p-4">
+              <Badge tone="green">Opportunity</Badge>
+              <p className="mt-2 text-sm font-semibold">
+                Growth plan conversions are up 31%.
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                Consider prioritising this audience.
+              </p>
+            </div>
+            <div className="rounded-xl bg-amber-50 p-4">
+              <Badge tone="amber">Monitor</Badge>
+              <p className="mt-2 text-sm font-semibold">
+                Churn rose slightly in the APAC segment.
+              </p>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section className="grid grid-cols-1 gap-5 mt-5 xl:grid-cols-3">
+        <article className="surface p-5 xl:col-span-2">
+          <div className="flex justify-between">
+            <div>
+              <h3 className="font-bold">Latest orders</h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Change an order from unpaid or pending to paid.
+              </p>
+            </div>
+            <button
+              onClick={() => go("Sales")}
+              className="text-sm font-semibold text-blue-600"
+            >
+              View all
+            </button>
+          </div>
+          <div className="table-wrap mt-4">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Plan</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((x) => (
+                  <tr key={x.id}>
+                    <td className="font-semibold">{x.customerName}</td>
+                    <td>{x.product}</td>
+                    <td>₹{Number(x.amount).toLocaleString("en-IN")}</td>
+                    <td>
+                      <Badge tone={x.status === "Paid" ? "green" : "amber"}>
+                        {x.status}
+                      </Badge>
+                    </td>
+                    <td>
+                      {x.status !== "Paid" && (
+                        <button
+                          onClick={() => updateOrder(x.id)}
+                          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white"
+                        >
+                          Mark as paid
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </article>
+        <article className="surface p-5">
+          <h3 className="font-bold">Quick actions</h3>
+          <div className="mt-4 space-y-2">
+            <button
+              onClick={() => nav("/upload")}
+              className="w-full flex gap-3 items-center rounded-xl bg-blue-50 p-3 text-left text-sm font-semibold text-blue-700"
+            >
+              <Upload size={17} /> Upload a dataset
+            </button>
+            <button
+              onClick={() => nav("/reports")}
+              className="w-full flex gap-3 items-center rounded-xl p-3 text-left text-sm font-semibold hover:bg-slate-50"
+            >
+              <FileText size={17} /> Generate report
+            </button>
+            <button
+              onClick={() => nav("/forecast")}
+              className="w-full flex gap-3 items-center rounded-xl p-3 text-left text-sm font-semibold hover:bg-slate-50"
+            >
+              <Plus size={17} /> Explore forecast
+            </button>
+          </div>
+        </article>
+      </section>
+    </DashboardLayout>
+  );
+}
 export default Dashboard;

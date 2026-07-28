@@ -16,12 +16,12 @@ A full-stack business intelligence dashboard for tracking revenue, orders, custo
 
 ## Tech stack
 
-| Layer | Technologies |
-| --- | --- |
+| Layer    | Technologies                                                     |
+| -------- | ---------------------------------------------------------------- |
 | Frontend | React, Vite, React Router, Recharts, Tailwind CSS, Axios, Lucide |
-| Backend | Node.js, Express, JWT, bcrypt, Multer |
-| Database | MySQL |
-| Payments | node-cron, Nodemailer, PDFKit |
+| Backend  | Node.js, Express, JWT, bcrypt, Multer                            |
+| Database | MySQL                                                            |
+| Payments | node-cron, Nodemailer, PDFKit                                    |
 
 ## Project structure
 

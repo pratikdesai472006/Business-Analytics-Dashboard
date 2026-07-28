@@ -2,14 +2,10 @@ const db = require("../config/db");
 
 const findUserByEmail = (email) => {
   return new Promise((resolve, reject) => {
-    db.query(
-      "SELECT * FROM users WHERE email = ?",
-      [email],
-      (err, result) => {
-        if (err) return reject(err);
-        resolve(result);
-      }
-    );
+    db.query("SELECT * FROM users WHERE email = ?", [email], (err, result) => {
+      if (err) return reject(err);
+      resolve(result);
+    });
   });
 };
 
@@ -21,7 +17,7 @@ const createUser = (fullName, email, password) => {
       (err, result) => {
         if (err) return reject(err);
         resolve(result);
-      }
+      },
     );
   });
 };
@@ -34,7 +30,7 @@ const findUserById = (id) => {
       (err, result) => {
         if (err) return reject(err);
         resolve(result);
-      }
+      },
     );
   });
 };

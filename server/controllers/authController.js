@@ -28,18 +28,13 @@ const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const result = await createUser(
-      fullName,
-      email,
-      hashedPassword
-    );
+    const result = await createUser(fullName, email, hashedPassword);
 
     res.status(201).json({
       success: true,
       message: "Registration Successful",
       token: generateToken(result.insertId),
     });
-
   } catch (error) {
     console.error(error);
 
@@ -48,8 +43,6 @@ const register = async (req, res) => {
     });
   }
 };
-
-
 
 const login = async (req, res) => {
   try {
@@ -69,10 +62,7 @@ const login = async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(
-      password,
-      user[0].password
-    );
+    const isMatch = await bcrypt.compare(password, user[0].password);
 
     if (!isMatch) {
       return res.status(401).json({
@@ -90,7 +80,6 @@ const login = async (req, res) => {
         email: user[0].email,
       },
     });
-
   } catch (error) {
     console.error(error);
 

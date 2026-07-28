@@ -29,4 +29,8 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
 
-cron.schedule("0 9 * * *", () => sendDueReminders().catch((error) => console.error("Payment reminder failed", error)));
+cron.schedule("0 9 * * *", () =>
+  sendDueReminders().catch((error) =>
+    console.error("Payment reminder failed", error),
+  ),
+);
