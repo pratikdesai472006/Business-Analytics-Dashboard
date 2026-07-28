@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const {
   findUserByEmail,
   createUser,
-  findUserForLogin,
+  findUserById,
 } = require("../services/authService");
 
 const generateToken = require("../utils/generateToken");
@@ -61,7 +61,7 @@ const login = async (req, res) => {
       });
     }
 
-    const user = await findUserForLogin(email);
+    const user = await findUserByEmail(email);
 
     if (user.length === 0) {
       return res.status(401).json({
@@ -100,7 +100,33 @@ const login = async (req, res) => {
   }
 };
 
+const getCurrentUser = async (req, res) => {
+  try {
+    const user = await findUserById(req.user.id);
+
+    if (user.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user: user[0],
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
+  getCurrentUser,
 };

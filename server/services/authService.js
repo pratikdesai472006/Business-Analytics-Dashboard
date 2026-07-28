@@ -26,11 +26,11 @@ const createUser = (fullName, email, password) => {
   });
 };
 
-const findUserForLogin = (email) => {
+const findUserById = (id) => {
   return new Promise((resolve, reject) => {
     db.query(
-      "SELECT * FROM users WHERE email = ?",
-      [email],
+      "SELECT id, full_name, email FROM users WHERE id = ?",
+      [id],
       (err, result) => {
         if (err) return reject(err);
         resolve(result);
@@ -42,5 +42,5 @@ const findUserForLogin = (email) => {
 module.exports = {
   findUserByEmail,
   createUser,
-  findUserForLogin,
+  findUserById,
 };
