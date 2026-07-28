@@ -23,6 +23,14 @@ function Loader({ label = "Loading", fullscreen = false, className = "" }) {
   return content;
 }
 
+export function FullPageLoader({ label = "Loading" }) {
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center bg-background">
+      <Loader label={label} />
+    </div>
+  );
+}
+
 export function Skeleton({ className = "" }) {
   return <div className={cn("skeleton rounded-lg", className)} aria-hidden="true" />;
 }

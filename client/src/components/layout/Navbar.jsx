@@ -41,7 +41,7 @@ function useClickOutside(onOutside) {
   return ref;
 }
 
-function Navbar({ onOpenSidebar }) {
+function Navbar({ onMenuClick }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -80,7 +80,7 @@ function Navbar({ onOpenSidebar }) {
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
         {/* Mobile menu */}
         <button
-          onClick={onOpenSidebar}
+          onClick={onMenuClick}
           className="rounded-xl p-2 text-muted transition-colors hover:bg-elevated hover:text-foreground lg:hidden"
           aria-label="Open navigation"
         >
