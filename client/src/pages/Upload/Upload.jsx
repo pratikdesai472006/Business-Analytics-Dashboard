@@ -28,21 +28,30 @@ function Upload() {
   const token = localStorage.getItem("token");
   const auth = { headers: { Authorization: `Bearer ${token}` } };
 
-  const loadHistory = async () => {
-    setLoading(true);
-    try {
-      const response = await api.get("/datasets", auth);
-      setHistory(response.data.datasets);
-      setError("");
-    } catch {
-      setError("Could not load your uploaded datasets. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadHistory();
+    let active = true;
+    const fetchHistory = async () => {
+      setLoading(true);
+      try {
+        const auth = { headers: { Authorization: `Bearer ${token}` } };
+        const response = await api.get("/datasets", auth);
+        if (active) {
+          setHistory(response.data.datasets);
+          setError("");
+        }
+      } catch {
+        if (active) {
+          setError("Could not load your uploaded datasets. Please try again.");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchHistory();
+    return () => { active = false; };
   }, [token]);
 
   const pick = (selectedFile) => {
