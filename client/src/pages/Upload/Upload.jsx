@@ -33,8 +33,9 @@ function Upload() {
     const fetchHistory = async () => {
       setLoading(true);
       try {
-        const auth = { headers: { Authorization: `Bearer ${token}` } };
-        const response = await api.get("/datasets", auth);
+        const currentToken = localStorage.getItem("token");
+        const authHeader = { headers: { Authorization: `Bearer ${currentToken}` } };
+        const response = await api.get("/datasets", authHeader);
         if (active) {
           setHistory(response.data.datasets);
           setError("");
@@ -51,7 +52,10 @@ function Upload() {
     };
 
     fetchHistory();
-    return () => { active = false; };
+    // Refresh when the browser tab/window regains focus (helps when switching tabs)
+    const onFocus = () => { fetchHistory(); };
+    window.addEventListener("focus", onFocus);
+    return () => { active = false; window.removeEventListener("focus", onFocus); };
   }, [token]);
 
   const pick = (selectedFile) => {
