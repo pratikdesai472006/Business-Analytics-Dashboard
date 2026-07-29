@@ -35,7 +35,7 @@ app.use(
   }),
 );
 
-app.options("*", cors({
+app.options("/api/*", cors({
   origin: allowAllOrigins ? true : allowedOrigins,
   methods: ["GET", "POST", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
