@@ -20,9 +20,15 @@ const uploadCsv = (req, res, next) =>
 
 router.use(auth);
 router.get("/", controller.list);
+router.get("/active", controller.active);
+router.get("/active/analytics", controller.analytics);
 router.post("/upload", uploadCsv);
 router.post("/manual", controller.createManual);
+router.patch("/:id/activate", controller.activate);
+router.patch("/:id/rename", controller.rename);
+router.delete("/:id", controller.remove);
 router.get("/:id/rows", controller.rows);
 router.get("/:id/file", controller.file);
+router.get("/:id/export", controller.exportCsv);
 
 module.exports = router;

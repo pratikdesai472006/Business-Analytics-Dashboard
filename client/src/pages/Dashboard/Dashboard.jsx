@@ -24,47 +24,44 @@ import StatCard from "../../components/common/StatCard";
 import PageHeader from "../../components/common/PageHeader";
 import Badge from "../../components/common/Badge";
 import api from "../../api/axios";
-const revenue = [
-  { m: "Jan '25", v: 36 },
-  { m: "Feb", v: 43 },
-  { m: "Mar", v: 39 },
-  { m: "Apr", v: 57 },
-  { m: "May", v: 51 },
-  { m: "Jun", v: 68 },
-  { m: "Jul", v: 72 },
-  { m: "Aug", v: 88 },
-  { m: "Sep", v: 84 },
-  { m: "Oct", v: 103 },
-  { m: "Nov", v: 96 },
-  { m: "Dec", v: 118 },
-  { m: "Jan '26", v: 111 },
-  { m: "Feb", v: 124 },
-  { m: "Mar", v: 129 },
-  { m: "Apr", v: 144 },
-  { m: "May", v: 138 },
-  { m: "Jun", v: 156 },
-  { m: "Jul", v: 168 },
-  { m: "Aug", v: 181 },
-  { m: "Sep", v: 174 },
-  { m: "Oct", v: 194 },
-  { m: "Nov", v: 207 },
-  { m: "Dec", v: 226 },
-];
 function Dashboard() {
   const nav = useNavigate();
   const [period, setPeriod] = useState("12");
   const [orders, setOrders] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     const token = localStorage.getItem("token");
-    api
-      .get("/orders", { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => setOrders(r.data.orders))
-      .catch(() => setOrders([]));
+    const headers = { headers: { Authorization: `Bearer ${token}` } };
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [ordersRes, analyticsRes] = await Promise.all([
+          api.get("/orders", headers),
+          api.get("/datasets/active/analytics", headers),
+        ]);
+        setOrders(ordersRes.data.orders || []);
+        setAnalytics(analyticsRes.data.analytics);
+      } catch {
+        setOrders([]);
+        setAnalytics(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+    const onRefresh = () => fetchData();
+    window.addEventListener("focus", onRefresh);
+    window.addEventListener("dataset:updated", onRefresh);
+    return () => {
+      window.removeEventListener("focus", onRefresh);
+      window.removeEventListener("dataset:updated", onRefresh);
+    };
   }, []);
-  const chartData = useMemo(
-    () => (period === "all" ? revenue : revenue.slice(-Number(period))),
-    [period],
-  );
+  const chartData = useMemo(() => {
+    const source = analytics?.chartData || [];
+    return period === "all" ? source : source.slice(-Number(period));
+  }, [analytics, period]);
   const go = (category) =>
     nav(`/reports?category=${encodeURIComponent(category)}`);
   const updateOrder = async (id) => {
@@ -80,6 +77,7 @@ function Dashboard() {
       ),
     );
   };
+  const summary = analytics?.summary || {};
   return (
     <DashboardLayout>
       <PageHeader
@@ -99,31 +97,31 @@ function Dashboard() {
         <StatCard
           onClick={() => go("Revenue")}
           label="Total revenue"
-          value="₹12.48L"
-          change="18.2%"
+          value={loading ? "—" : `₹${Number(summary.totalRevenue || 0).toLocaleString("en-IN")}`}
+          change={summary.growth ? `${summary.growth.toFixed(1)}%` : "0%"}
           icon={WalletCards}
         />
         <StatCard
           onClick={() => go("Sales")}
           label="Total orders"
-          value="1,284"
-          change="12.6%"
+          value={loading ? "—" : (summary.totalOrders || 0).toLocaleString("en-IN")}
+          change="Live"
           icon={ShoppingCart}
           tone="violet"
         />
         <StatCard
           onClick={() => go("Customers")}
           label="Active customers"
-          value="8,249"
-          change="8.4%"
+          value={loading ? "—" : (summary.activeCustomers || 0).toLocaleString("en-IN")}
+          change="Live"
           icon={Users}
           tone="emerald"
         />
         <StatCard
           onClick={() => go("Growth")}
           label="Revenue growth"
-          value="24.8%"
-          change="4.1%"
+          value={loading ? "—" : `${(summary.growth || 0).toFixed(1)}%`}
+          change="Live"
           icon={TrendingUp}
           tone="amber"
         />
@@ -134,7 +132,7 @@ function Dashboard() {
             <div>
               <h3 className="font-bold">Revenue performance</h3>
               <p className="mt-1 text-xs text-slate-500">
-                Monthly recurring revenue in thousands
+                {analytics?.summary?.datasetName ? `Using ${analytics.summary.datasetName}` : "Monthly recurring revenue in thousands"}
               </p>
             </div>
             <select
@@ -171,7 +169,7 @@ function Dashboard() {
                   axisLine={false}
                   tick={{ fontSize: 11, fill: "#94a3b8" }}
                 />
-                <Tooltip formatter={(value) => [`₹${value}k`, "Revenue"]} />
+                <Tooltip formatter={(value) => [`₹${value}`, "Revenue"]} />
                 <Area
                   type="monotone"
                   dataKey="v"
@@ -213,7 +211,7 @@ function Dashboard() {
             <div>
               <h3 className="font-bold">Latest orders</h3>
               <p className="mt-1 text-xs text-slate-500">
-                Change an order from unpaid or pending to paid.
+                {summary.lastUpdated ? `Last updated ${new Date(summary.lastUpdated).toLocaleString("en-IN")}` : "Change an order from unpaid or pending to paid."}
               </p>
             </div>
             <button

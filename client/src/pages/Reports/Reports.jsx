@@ -1,44 +1,54 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Download, FileText, Search, SlidersHorizontal, X } from "lucide-react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import PageHeader from "../../components/common/PageHeader";
 import Badge from "../../components/common/Badge";
-const seedReports = [
-  ["Monthly revenue report", "Revenue", "Jul 2026", "Today", "Ready"],
-  ["Customer acquisition", "Customers", "Q2 2026", "Jul 25", "Ready"],
-  ["Sales performance", "Sales", "Jun 2026", "Jul 21", "Ready"],
-  ["Product profitability", "Products", "Q2 2026", "Jul 14", "Draft"],
-  ["Regional growth analysis", "Growth", "H1 2026", "Jul 05", "Ready"],
-];
+import api from "../../api/axios";
 function Reports() {
   const [query, setQuery] = useState(""),
     [params, setParams] = useSearchParams(),
-    [reports, setReports] = useState(seedReports),
+    [reports, setReports] = useState([]),
     [creating, setCreating] = useState(false),
     [draft, setDraft] = useState({
       name: "",
       category: "Revenue",
       period: "This month",
     });
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const headers = { headers: { Authorization: `Bearer ${token}` } };
+    const loadReports = () => {
+      api.get("/datasets/active/analytics", headers)
+        .then((response) => setReports(response.data.analytics?.reports || []))
+        .catch(() => setReports([]));
+    };
+    loadReports();
+    window.addEventListener("focus", loadReports);
+    window.addEventListener("dataset:updated", loadReports);
+    return () => {
+      window.removeEventListener("focus", loadReports);
+      window.removeEventListener("dataset:updated", loadReports);
+    };
+  }, []);
   const category = params.get("category") || "All";
   const shown = useMemo(
     () =>
       reports.filter(
         (r) =>
-          r[0].toLowerCase().includes(query.toLowerCase()) &&
-          (category === "All" || r[1] === category),
+          (r.name || "").toLowerCase().includes(query.toLowerCase()) &&
+          (category === "All" || r.category === category),
       ),
     [query, category, reports],
   );
   const exportFile = (report) => {
     const blob = new Blob(
-      [`Report,Category,Period,Status\n${report.join(",")}`],
+      [`Report,Category,Period,Status\n${[report.name, report.category, report.period, report.status].join(",")}`],
       { type: "text/csv" },
     );
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${report[0].toLowerCase().replaceAll(" ", "-")}.csv`;
+    a.download = `${report.name.toLowerCase().replaceAll(" ", "-")}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -46,7 +56,7 @@ function Reports() {
     e.preventDefault();
     if (!draft.name.trim()) return;
     setReports([
-      [draft.name, draft.category, draft.period, "Just now", "Draft"],
+      { name: draft.name, category: draft.category, period: draft.period, updated: "Just now", status: "Draft" },
       ...reports,
     ]);
     setCreating(false);
@@ -202,21 +212,21 @@ function Reports() {
             </thead>
             <tbody>
               {shown.map((r) => (
-                <tr key={`${r[0]}-${r[3]}`}>
+                <tr key={`${r.name}-${r.updated}`}>
                   <td>
                     <span className="flex items-center gap-3 font-semibold">
                       <span className="grid place-items-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600">
                         <FileText size={16} />
                       </span>
-                      {r[0]}
+                      {r.name}
                     </span>
                   </td>
-                  <td>{r[1]}</td>
-                  <td>{r[2]}</td>
-                  <td>{r[3]}</td>
+                  <td>{r.category}</td>
+                  <td>{r.period}</td>
+                  <td>{r.updated}</td>
                   <td>
-                    <Badge tone={r[4] === "Ready" ? "green" : "amber"}>
-                      {r[4]}
+                    <Badge tone={r.status === "Ready" ? "green" : "amber"}>
+                      {r.status}
                     </Badge>
                   </td>
                   <td>

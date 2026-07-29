@@ -8,20 +8,30 @@ import {
   YAxis,
 } from "recharts";
 import { Sparkles, TrendingUp, Target, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import PageHeader from "../../components/common/PageHeader";
 import StatCard from "../../components/common/StatCard";
-const data = [
-  ["Jul", 72],
-  ["Aug", 79],
-  ["Sep", 84],
-  ["Oct", 92],
-  ["Nov", 99],
-  ["Dec", 108],
-  ["Jan", 116],
-  ["Feb", 125],
-];
+import api from "../../api/axios";
 function Forecast() {
+  const [analytics, setAnalytics] = useState(null);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const headers = { headers: { Authorization: `Bearer ${token}` } };
+    const loadForecast = () => {
+      api.get("/datasets/active/analytics", headers)
+        .then((response) => setAnalytics(response.data.analytics))
+        .catch(() => setAnalytics(null));
+    };
+    loadForecast();
+    window.addEventListener("focus", loadForecast);
+    window.addEventListener("dataset:updated", loadForecast);
+    return () => {
+      window.removeEventListener("focus", loadForecast);
+      window.removeEventListener("dataset:updated", loadForecast);
+    };
+  }, []);
+  const data = analytics?.forecastData || [];
   return (
     <DashboardLayout>
       <PageHeader
@@ -38,28 +48,28 @@ function Forecast() {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Forecasted revenue"
-          value="₹8.46L"
-          change="16.8%"
+          value={analytics ? `₹${(analytics.summary?.totalRevenue || 0).toLocaleString("en-IN")}` : "—"}
+          change="Live"
           icon={TrendingUp}
         />
         <StatCard
           label="Projected growth"
-          value="25.4%"
-          change="3.2%"
+          value={analytics ? `${(analytics.summary?.growth || 0).toFixed(1)}%` : "—"}
+          change="Live"
           icon={Target}
           tone="violet"
         />
         <StatCard
           label="Confidence score"
-          value="91.2%"
-          change="2.1%"
+          value={analytics ? `${Math.max(70, 90 - (analytics.summary?.rowCount || 0) / 100)}%` : "—"}
+          change="Live"
           icon={ShieldCheck}
           tone="emerald"
         />
         <StatCard
           label="Trend strength"
-          value="Strong"
-          change="12 signals"
+          value={analytics?.summary?.rowCount ? "Strong" : "—"}
+          change="Live"
           icon={Sparkles}
           tone="amber"
         />
@@ -72,13 +82,7 @@ function Forecast() {
           </p>
           <div className="h-80 mt-4">
             <ResponsiveContainer>
-              <AreaChart
-                data={data.map(([month, value], i) => ({
-                  month,
-                  value,
-                  forecast: i > 3 ? value : null,
-                }))}
-              >
+              <AreaChart data={data}>
                 <defs>
                   <linearGradient id="forecast" x1="0" x2="0" y1="0" y2="1">
                     <stop offset="0" stopColor="#7c3aed" stopOpacity=".25" />

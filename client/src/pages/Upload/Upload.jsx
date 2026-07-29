@@ -89,6 +89,7 @@ function Upload() {
       setNotice(`${file.name} was saved and is ready for analysis.`);
       setFile(null);
       input.current.value = "";
+      window.dispatchEvent(new CustomEvent("dataset:updated"));
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Could not upload the CSV file.");
     } finally {
@@ -140,6 +141,7 @@ function Upload() {
       setNotice(`${complete.length} manual records were saved successfully.`);
       setRows([blank(), blank()]);
       setError("");
+      window.dispatchEvent(new CustomEvent("dataset:updated"));
     } catch {
       setError("Could not save manual records. Please try again.");
     } finally {
