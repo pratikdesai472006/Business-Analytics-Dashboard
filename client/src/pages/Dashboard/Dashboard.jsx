@@ -174,7 +174,7 @@ function Dashboard() {
                 </defs>
                 <CartesianGrid stroke="#eef2f7" vertical={false} />
                 <XAxis
-                  dataKey="m"
+                  dataKey="month"
                   tickLine={false}
                   axisLine={false}
                   tick={{ fontSize: 11, fill: "#94a3b8" }}
@@ -187,7 +187,7 @@ function Dashboard() {
                 <Tooltip formatter={(value) => [`₹${value}`, "Revenue"]} />
                 <Area
                   type="monotone"
-                  dataKey="v"
+                  dataKey="value"
                   stroke="#2563eb"
                   strokeWidth={3}
                   fill="url(#revenue)"
