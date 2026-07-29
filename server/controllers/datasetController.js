@@ -1,5 +1,6 @@
 const parseCsv = require("../utils/parseCsv");
 const datasets = require("../services/datasetService");
+const { buildAnalytics } = require("../utils/analyticsEngine");
 
 const serialize = (dataset) => ({
   id: String(dataset._id),
@@ -18,95 +19,6 @@ const serialize = (dataset) => ({
   updatedAt: dataset.updatedAt,
 });
 
-const pickValue = (row, keys) => {
-  for (const key of keys) {
-    const value = row?.data?.[key];
-    if (value !== undefined && value !== null && value !== "") return value;
-  }
-  return undefined;
-};
-
-const toNumber = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const getMonthLabel = (value) => {
-  if (!value) return "Unknown";
-  const date = new Date(value);
-  if (!Number.isNaN(date.getTime())) {
-    return date.toLocaleString("en-US", { month: "short", year: "numeric" });
-  }
-  return String(value);
-};
-
-const buildAnalytics = (dataset, rows) => {
-  const monthlyRevenue = rows.reduce((acc, row) => {
-    const month = getMonthLabel(pickValue(row, ["date", "Date", "createdAt", "created_at"]));
-    const value = toNumber(pickValue(row, ["revenue", "Revenue", "amount", "total", "totalRevenue"]));
-    acc[month] = (acc[month] || 0) + value;
-    return acc;
-  }, {});
-
-  const chartData = Object.entries(monthlyRevenue)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([month, value]) => ({ month, value }));
-
-  const totalRevenue = chartData.reduce((sum, point) => sum + point.value, 0);
-  const totalOrders = rows.length;
-  const customers = new Set(
-    rows
-      .map((row) => String(pickValue(row, ["customer", "Customer", "customerName", "customer_name"]) || "").trim())
-      .filter(Boolean),
-  );
-
-  const growth = chartData.length > 1
-    ? ((chartData[chartData.length - 1].value - chartData[chartData.length - 2].value) / Math.max(1, chartData[chartData.length - 2].value)) * 100
-    : 0;
-
-  const forecastData = chartData.length
-    ? [
-        ...chartData.map((point) => ({ month: point.month, value: point.value, forecast: null })),
-        ...Array.from({ length: 6 }, (_, index) => ({
-          month: `Forecast ${index + 1}`,
-          value: null,
-          forecast: chartData[chartData.length - 1]?.value + (chartData[chartData.length - 1]?.value * 0.08 * (index + 1)),
-        })),
-      ]
-    : [];
-
-  const previewRows = rows.slice(0, 8).map((row) => ({
-    id: row.rowNumber,
-    customer: pickValue(row, ["customer", "Customer", "customerName", "customer_name"]),
-    product: pickValue(row, ["product", "Product"]),
-    revenue: pickValue(row, ["revenue", "Revenue", "amount", "total"]),
-    status: pickValue(row, ["status", "Status", "payment_status"]),
-    date: pickValue(row, ["date", "Date"]),
-  }));
-
-  const updatedAt = dataset.updatedAt || dataset.createdAt;
-  const reports = [
-    { name: `${dataset.name} summary`, category: "Revenue", period: "Current upload", updated: new Date(updatedAt).toLocaleDateString("en-IN"), status: "Ready" },
-    { name: `${dataset.name} customer view`, category: "Customers", period: "Current upload", updated: new Date(updatedAt).toLocaleDateString("en-IN"), status: "Ready" },
-    { name: `${dataset.name} growth outlook`, category: "Growth", period: "Current upload", updated: new Date(updatedAt).toLocaleDateString("en-IN"), status: "Ready" },
-  ];
-
-  return {
-    summary: {
-      totalRevenue,
-      totalOrders,
-      activeCustomers: customers.size,
-      growth,
-      datasetName: dataset.name,
-      rowCount: dataset.rowCount,
-      lastUpdated: updatedAt,
-    },
-    chartData,
-    forecastData,
-    previewRows,
-    reports,
-  };
-};
 
 const uploadCsv = async (req, res) => {
   if (!req.file) return res.status(400).json({ message: "A CSV file is required." });
@@ -197,8 +109,16 @@ const analytics = async (req, res) => {
   try {
     const dataset = await datasets.getActiveDataset(req.user.id);
     if (!dataset) return res.json({ success: true, analytics: null });
+
+    const cached = datasets.getCachedAnalytics(req.user.id);
+    if (cached) {
+      return res.json({ success: true, analytics: cached });
+    }
+
     const rows = await datasets.datasetRows(dataset._id, req.user.id);
-    return res.json({ success: true, analytics: buildAnalytics(dataset, rows) });
+    const analyticsPayload = buildAnalytics(dataset, rows);
+    datasets.setCachedAnalytics(req.user.id, analyticsPayload);
+    return res.json({ success: true, analytics: analyticsPayload });
   } catch {
     return res.status(500).json({ message: "Could not build analytics." });
   }

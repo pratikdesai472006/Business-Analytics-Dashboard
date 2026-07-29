@@ -4,12 +4,16 @@ import { Download, FileText, Search, SlidersHorizontal, X } from "lucide-react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import PageHeader from "../../components/common/PageHeader";
 import Badge from "../../components/common/Badge";
+import PageSkeleton from "../../components/common/PageSkeleton";
+import { fetchActiveAnalytics } from "../../utils/analyticsCache";
 import api from "../../api/axios";
+
 function Reports() {
   const [query, setQuery] = useState(""),
     [params, setParams] = useSearchParams(),
     [reports, setReports] = useState([]),
     [creating, setCreating] = useState(false),
+    [loading, setLoading] = useState(true),
     [draft, setDraft] = useState({
       name: "",
       category: "Revenue",
@@ -18,10 +22,16 @@ function Reports() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const headers = { headers: { Authorization: `Bearer ${token}` } };
-    const loadReports = () => {
-      api.get("/datasets/active/analytics", headers)
-        .then((response) => setReports(response.data.analytics?.reports || []))
-        .catch(() => setReports([]));
+    const loadReports = async () => {
+      setLoading(true);
+      try {
+        const response = await fetchActiveAnalytics(api, headers);
+        setReports(response.data?.reports || []);
+      } catch {
+        setReports([]);
+      } finally {
+        setLoading(false);
+      }
     };
     loadReports();
     window.addEventListener("focus", loadReports);
@@ -65,6 +75,15 @@ function Reports() {
   };
   const setCategory = (value) =>
     setParams(value === "All" ? {} : { category: value });
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <PageSkeleton rows={3} />
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <PageHeader

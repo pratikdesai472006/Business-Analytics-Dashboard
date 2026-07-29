@@ -8,20 +8,31 @@ import {
   YAxis,
 } from "recharts";
 import { Sparkles, TrendingUp, Target, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import PageHeader from "../../components/common/PageHeader";
 import StatCard from "../../components/common/StatCard";
+import PageSkeleton from "../../components/common/PageSkeleton";
+import { fetchActiveAnalytics } from "../../utils/analyticsCache";
 import api from "../../api/axios";
+
 function Forecast() {
   const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const headers = { headers: { Authorization: `Bearer ${token}` } };
-    const loadForecast = () => {
-      api.get("/datasets/active/analytics", headers)
-        .then((response) => setAnalytics(response.data.analytics))
-        .catch(() => setAnalytics(null));
+    const loadForecast = async () => {
+      setLoading(true);
+      try {
+        const response = await fetchActiveAnalytics(api, headers);
+        setAnalytics(response.data);
+      } catch {
+        setAnalytics(null);
+      } finally {
+        setLoading(false);
+      }
     };
     loadForecast();
     window.addEventListener("focus", loadForecast);
@@ -31,7 +42,16 @@ function Forecast() {
       window.removeEventListener("dataset:updated", loadForecast);
     };
   }, []);
-  const data = analytics?.forecastData || [];
+  const data = useMemo(() => analytics?.forecastData || [], [analytics]);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <PageSkeleton rows={3} />
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <PageHeader

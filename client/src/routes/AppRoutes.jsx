@@ -1,17 +1,19 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "../pages/Login/Login";
 import Register from "../pages/Register/Register";
-import Dashboard from "../pages/Dashboard/Dashboard";
-import Upload from "../pages/Upload/Upload";
-import Reports from "../pages/Reports/Reports";
-import Profile from "../pages/Profile/Profile";
-import Forecast from "../pages/Forecast/Forecast";
-
 import ProtectedRoute from "./ProtectedRoute";
+
+const Dashboard = lazy(() => import("../pages/Dashboard/Dashboard"));
+const Upload = lazy(() => import("../pages/Upload/Upload"));
+const Reports = lazy(() => import("../pages/Reports/Reports"));
+const Profile = lazy(() => import("../pages/Profile/Profile"));
+const Forecast = lazy(() => import("../pages/Forecast/Forecast"));
 
 function AppRoutes() {
   return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 p-6 text-sm text-slate-500">Loading page…</div>}>
     <Routes>
       {/* Redirect Root */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -69,6 +71,7 @@ function AppRoutes() {
       {/* Unknown Route */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
+    </Suspense>
   );
 }
 

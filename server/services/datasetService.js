@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Dataset = require("../models/Dataset");
 const DatasetRow = require("../models/DatasetRow");
+const analyticsCache = new Map();
 
 const bucket = () => new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: "csvUploads" });
 
@@ -94,10 +95,10 @@ const createManualDataset = async ({ userId, name, rows }) => {
   }
 };
 
-const listDatasets = (userId) => Dataset.find({ userId }).sort({ createdAt: -1 }).lean();
-const findDataset = (id, userId) => Dataset.findOne({ _id: id, userId }).lean();
-const getActiveDataset = (userId) => Dataset.findOne({ userId, isActive: true }).sort({ createdAt: -1 }).lean();
-const datasetRows = (datasetId, userId) => DatasetRow.find({ datasetId, userId }).sort({ rowNumber: 1 }).lean();
+const listDatasets = (userId) => Dataset.find({ userId }).sort({ createdAt: -1 }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
+const findDataset = (id, userId) => Dataset.findOne({ _id: id, userId }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
+const getActiveDataset = (userId) => Dataset.findOne({ userId, isActive: true }).sort({ createdAt: -1 }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
+const datasetRows = (datasetId, userId) => DatasetRow.find({ datasetId, userId }).sort({ rowNumber: 1 }).select("rowNumber data").lean();
 const activateDataset = async (userId, datasetId) => {
   const dataset = await Dataset.findOne({ _id: datasetId, userId });
   if (!dataset) return null;
@@ -125,6 +126,20 @@ const deleteDataset = async (userId, datasetId) => {
 
 const downloadFile = (fileId) => bucket().openDownloadStream(fileId);
 
+const getAnalyticsCacheKey = (userId) => `analytics:${String(userId)}`;
+const getCachedAnalytics = (userId) => {
+  const entry = analyticsCache.get(getAnalyticsCacheKey(userId));
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > 20_000) {
+    analyticsCache.delete(getAnalyticsCacheKey(userId));
+    return null;
+  }
+  return entry.value;
+};
+const setCachedAnalytics = (userId, value) => {
+  analyticsCache.set(getAnalyticsCacheKey(userId), { value, timestamp: Date.now() });
+};
+
 module.exports = {
   createCsvDataset,
   createManualDataset,
@@ -136,4 +151,6 @@ module.exports = {
   renameDataset,
   deleteDataset,
   downloadFile,
+  getCachedAnalytics,
+  setCachedAnalytics,
 };

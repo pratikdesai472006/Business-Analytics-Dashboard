@@ -13,11 +13,14 @@ const datasetSchema = new mongoose.Schema(
     headers: [{ type: String }],
     status: { type: String, enum: ["Processing", "Processed", "Failed"], default: "Processing" },
     isActive: { type: Boolean, default: false, index: true },
-    uploadedAt: { type: Date, default: Date.now },
+    uploadedAt: { type: Date, default: Date.now, index: true },
     processedAt: { type: Date },
     activatedAt: { type: Date },
   },
   { timestamps: true },
 );
+
+datasetSchema.index({ userId: 1, isActive: 1, createdAt: -1 });
+datasetSchema.index({ userId: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Dataset", datasetSchema);

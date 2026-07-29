@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AreaChart,
@@ -23,47 +23,53 @@ import DashboardLayout from "../../components/layout/DashboardLayout";
 import StatCard from "../../components/common/StatCard";
 import PageHeader from "../../components/common/PageHeader";
 import Badge from "../../components/common/Badge";
+import PageSkeleton from "../../components/common/PageSkeleton";
 import api from "../../api/axios";
+
 function Dashboard() {
   const nav = useNavigate();
   const [period, setPeriod] = useState("12");
   const [orders, setOrders] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
+
+  const refreshData = useCallback(async () => {
     const token = localStorage.getItem("token");
     const headers = { headers: { Authorization: `Bearer ${token}` } };
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [ordersRes, analyticsRes] = await Promise.all([
-          api.get("/orders", headers),
-          api.get("/datasets/active/analytics", headers),
-        ]);
-        setOrders(ordersRes.data.orders || []);
-        setAnalytics(analyticsRes.data.analytics);
-      } catch {
-        setOrders([]);
-        setAnalytics(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-    const onRefresh = () => fetchData();
+    setLoading(true);
+    try {
+      const [ordersRes, analyticsRes] = await Promise.all([
+        api.get("/orders", headers),
+        api.get("/datasets/active/analytics", headers),
+      ]);
+      setOrders(ordersRes.data.orders || []);
+      setAnalytics(analyticsRes.data.analytics);
+    } catch {
+      setOrders([]);
+      setAnalytics(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshData();
+    const onRefresh = () => refreshData();
     window.addEventListener("focus", onRefresh);
     window.addEventListener("dataset:updated", onRefresh);
     return () => {
       window.removeEventListener("focus", onRefresh);
       window.removeEventListener("dataset:updated", onRefresh);
     };
-  }, []);
+  }, [refreshData]);
+
   const chartData = useMemo(() => {
     const source = analytics?.chartData || [];
     return period === "all" ? source : source.slice(-Number(period));
   }, [analytics, period]);
-  const go = (category) =>
-    nav(`/reports?category=${encodeURIComponent(category)}`);
+
+  const go = (category) => nav(`/reports?category=${encodeURIComponent(category)}`);
+
   const updateOrder = async (id) => {
     const token = localStorage.getItem("token");
     await api.patch(
@@ -71,13 +77,22 @@ function Dashboard() {
       { status: "Paid" },
       { headers: { Authorization: `Bearer ${token}` } },
     );
-    setOrders(
-      orders.map((order) =>
-        order.id === id ? { ...order, status: "Paid" } : order,
-      ),
+    setOrders((current) =>
+      current.map((order) => (order.id === id ? { ...order, status: "Paid" } : order)),
     );
   };
+
   const summary = analytics?.summary || {};
+  const insights = analytics?.insights || [];
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <PageSkeleton rows={4} />
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <PageHeader
@@ -184,24 +199,16 @@ function Dashboard() {
         <article className="surface p-5">
           <h3 className="font-bold">Business insights</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Signals worth your attention
+            Generated from the active dataset
           </p>
           <div className="mt-5 space-y-4">
-            <div className="rounded-xl bg-emerald-50 p-4">
-              <Badge tone="green">Opportunity</Badge>
-              <p className="mt-2 text-sm font-semibold">
-                Growth plan conversions are up 31%.
-              </p>
-              <p className="mt-1 text-xs text-slate-600">
-                Consider prioritising this audience.
-              </p>
-            </div>
-            <div className="rounded-xl bg-amber-50 p-4">
-              <Badge tone="amber">Monitor</Badge>
-              <p className="mt-2 text-sm font-semibold">
-                Churn rose slightly in the APAC segment.
-              </p>
-            </div>
+            {insights.length ? insights.map((insight, index) => (
+              <div key={`${insight.title}-${index}`} className={`rounded-xl p-4 ${insight.tone === "green" ? "bg-emerald-50" : insight.tone === "violet" ? "bg-violet-50" : insight.tone === "amber" ? "bg-amber-50" : "bg-blue-50"}`}>
+                <Badge tone={insight.tone === "green" ? "green" : insight.tone === "amber" ? "amber" : insight.tone === "violet" ? "violet" : "blue"}>{insight.tone === "green" ? "Opportunity" : insight.tone === "amber" ? "Monitor" : insight.tone === "violet" ? "Priority" : "Signal"}</Badge>
+                <p className="mt-2 text-sm font-semibold">{insight.title}</p>
+                <p className="mt-1 text-xs text-slate-600">{insight.detail}</p>
+              </div>
+            )) : <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Upload a dataset to generate insights.</div>}
           </div>
         </article>
       </section>

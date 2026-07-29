@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const compression = require("compression");
 const cron = require("node-cron");
 require("dotenv").config();
 
@@ -69,6 +70,7 @@ const corsOptions = {
 app.set("trust proxy", 1);
 
 app.use(cors(corsOptions));
+app.use(compression());
 
 // IMPORTANT:
 // Do NOT add app.options("/api/*", ...)
