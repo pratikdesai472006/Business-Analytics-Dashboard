@@ -20,7 +20,7 @@ const register = async (req, res) => {
 
     const existingUser = await findUserByEmail(email);
 
-    if (existingUser.length > 0) {
+    if (existingUser) {
       return res.status(400).json({
         message: "Email already exists",
       });
@@ -33,7 +33,7 @@ const register = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Registration Successful",
-      token: generateToken(result.insertId),
+      token: generateToken(result.id),
     });
   } catch (error) {
     console.error(error);
@@ -56,13 +56,13 @@ const login = async (req, res) => {
 
     const user = await findUserByEmail(email);
 
-    if (user.length === 0) {
+    if (!user) {
       return res.status(401).json({
         message: "Invalid email or password",
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user[0].password);
+    const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
       return res.status(401).json({
@@ -73,11 +73,11 @@ const login = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Login Successful",
-      token: generateToken(user[0].id),
+      token: generateToken(user.id),
       user: {
-        id: user[0].id,
-        fullName: user[0].full_name,
-        email: user[0].email,
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
       },
     });
   } catch (error) {
@@ -93,7 +93,7 @@ const getCurrentUser = async (req, res) => {
   try {
     const user = await findUserById(req.user.id);
 
-    if (user.length === 0) {
+    if (!user) {
       return res.status(404).json({
         success: false,
         message: "User not found",
@@ -102,7 +102,7 @@ const getCurrentUser = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      user: user[0],
+      user: { id: user.id, fullName: user.fullName, email: user.email },
     });
   } catch (error) {
     console.error(error);

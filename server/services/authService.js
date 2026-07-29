@@ -1,42 +1,8 @@
-const db = require("../config/db");
+const User = require("../models/User");
 
-const findUserByEmail = (email) => {
-  return new Promise((resolve, reject) => {
-    db.query("SELECT * FROM users WHERE email = ?", [email], (err, result) => {
-      if (err) return reject(err);
-      resolve(result);
-    });
-  });
-};
+const findUserByEmail = (email) => User.findOne({ email: email.toLowerCase() });
+const createUser = (fullName, email, password) =>
+  User.create({ fullName, email: email.toLowerCase(), password });
+const findUserById = (id) => User.findById(id).select("fullName email");
 
-const createUser = (fullName, email, password) => {
-  return new Promise((resolve, reject) => {
-    db.query(
-      "INSERT INTO users(full_name, email, password) VALUES (?, ?, ?)",
-      [fullName, email, password],
-      (err, result) => {
-        if (err) return reject(err);
-        resolve(result);
-      },
-    );
-  });
-};
-
-const findUserById = (id) => {
-  return new Promise((resolve, reject) => {
-    db.query(
-      "SELECT id, full_name, email FROM users WHERE id = ?",
-      [id],
-      (err, result) => {
-        if (err) return reject(err);
-        resolve(result);
-      },
-    );
-  });
-};
-
-module.exports = {
-  findUserByEmail,
-  createUser,
-  findUserById,
-};
+module.exports = { findUserByEmail, createUser, findUserById };

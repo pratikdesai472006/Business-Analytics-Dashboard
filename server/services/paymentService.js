@@ -1,64 +1,31 @@
-const db = require("../config/db");
-const query = (sql, values = []) =>
-  new Promise((resolve, reject) =>
-    db.query(sql, values, (error, results) =>
-      error ? reject(error) : resolve(results),
-    ),
-  );
+const Order = require("../models/Order");
 
-const listOrders = (userId) =>
-  query(
-    "SELECT id, customer_name AS customerName, customer_email AS customerEmail, product, amount, status, due_date AS dueDate, paid_at AS paidAt, created_at AS createdAt FROM orders WHERE user_id = ? ORDER BY created_at DESC",
-    [userId],
-  );
-const createOrder = ({
-  userId,
-  customerName,
-  customerEmail,
-  product,
-  amount,
-  dueDate,
-}) =>
-  query(
-    "INSERT INTO orders (user_id, customer_name, customer_email, product, amount, status, due_date) VALUES (?, ?, ?, ?, ?, 'Unpaid', ?)",
-    [userId, customerName, customerEmail || null, product, amount, dueDate],
-  );
-const getOrder = (id, userId) =>
-  query("SELECT * FROM orders WHERE id = ? AND user_id = ?", [id, userId]);
-const updateStatus = (id, userId, status) =>
-  query(
-    "UPDATE orders SET status = ?, paid_at = CASE WHEN ? = 'Paid' THEN NOW() ELSE NULL END WHERE id = ? AND user_id = ?",
-    [status, status, id, userId],
-  );
-const audit = (orderId, userId, fromStatus, toStatus) =>
-  query(
-    "INSERT INTO payment_audit_logs (order_id, user_id, previous_status, new_status) VALUES (?, ?, ?, ?)",
-    [orderId, userId, fromStatus, toStatus],
-  );
-const dueForReminder = () =>
-  query(
-    "SELECT o.*, u.full_name, u.email AS owner_email FROM orders o JOIN users u ON u.id = o.user_id WHERE o.status IN ('Unpaid', 'Pending') AND o.due_date <= DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND (o.last_reminder_at IS NULL OR DATE(o.last_reminder_at) < CURDATE())",
-  );
-const recordReminder = (id) =>
-  query("UPDATE orders SET last_reminder_at = NOW() WHERE id = ?", [id]);
-const createReceipt = (orderId, receiptNumber, filePath) =>
-  query(
-    "INSERT INTO payment_receipts (order_id, receipt_number, file_path) VALUES (?, ?, ?)",
-    [orderId, receiptNumber, filePath],
-  );
-const getReceipt = (orderId, userId) =>
-  query(
-    "SELECT pr.* FROM payment_receipts pr JOIN orders o ON o.id = pr.order_id WHERE pr.order_id = ? AND o.user_id = ? ORDER BY pr.created_at DESC LIMIT 1",
-    [orderId, userId],
-  );
-module.exports = {
-  listOrders,
-  createOrder,
-  getOrder,
-  updateStatus,
-  audit,
-  dueForReminder,
-  recordReminder,
-  createReceipt,
-  getReceipt,
+const listOrders = async (userId) => {
+  const orders = await Order.find({ userId }).sort({ createdAt: -1 }).lean();
+  return orders.map((order) => ({ id: String(order._id), customerName: order.customerName, customerEmail: order.customerEmail, product: order.product, amount: order.amount, status: order.status, dueDate: order.dueDate, paidAt: order.paidAt, createdAt: order.createdAt }));
 };
+const createOrder = async (data) => {
+  const order = await Order.create(data);
+  return { insertId: String(order._id) };
+};
+const getOrder = async (id, userId) => {
+  const order = await Order.findOne({ _id: id, userId }).lean();
+  if (!order) return [];
+  return [{ id: String(order._id), customer_name: order.customerName, customer_email: order.customerEmail, product: order.product, amount: order.amount, status: order.status, due_date: order.dueDate, paid_at: order.paidAt }];
+};
+const updateStatus = (id, userId, status) => Order.updateOne({ _id: id, userId }, { status, paidAt: status === "Paid" ? new Date() : null });
+const audit = (orderId, userId, previousStatus, newStatus) => Order.updateOne({ _id: orderId, userId }, { $push: { auditLogs: { previousStatus, newStatus } } });
+const dueForReminder = async () => {
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(23, 59, 59, 999);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const orders = await Order.find({ status: { $in: ["Unpaid", "Pending"] }, dueDate: { $lte: tomorrow }, $or: [{ lastReminderAt: { $exists: false } }, { lastReminderAt: { $lt: today } }] }).populate("userId", "fullName email").lean();
+  return orders.map((order) => ({ ...order, id: String(order._id), customer_name: order.customerName, customer_email: order.customerEmail, due_date: order.dueDate, owner_email: order.userId?.email, full_name: order.userId?.fullName }));
+};
+const recordReminder = (id) => Order.updateOne({ _id: id }, { lastReminderAt: new Date() });
+const createReceipt = (orderId, receiptNumber, filePath) => Order.updateOne({ _id: orderId }, { $push: { receipts: { receiptNumber, filePath } } });
+const getReceipt = async (orderId, userId) => {
+  const order = await Order.findOne({ _id: orderId, userId }).select("receipts").lean();
+  const receipt = order?.receipts?.at(-1);
+  return receipt ? [{ receipt_number: receipt.receiptNumber, file_path: receipt.filePath }] : [];
+};
+module.exports = { listOrders, createOrder, getOrder, updateStatus, audit, dueForReminder, recordReminder, createReceipt, getReceipt };

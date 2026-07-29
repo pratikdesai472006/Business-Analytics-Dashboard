@@ -1,40 +1,23 @@
 # Aperture Business Analytics Dashboard
 
-A full-stack business intelligence dashboard for tracking revenue, orders, customers, payment status, reports, and forward-looking performance.
+A full-stack business dashboard for tracking revenue, orders, customers, payment status, reports, and forecasts.
 
 ## Features
 
 - JWT authentication with protected routes
 - Responsive analytics dashboard with KPI cards and revenue charts
 - CSV upload and spreadsheet-style manual entry UI
-- Report search, category filters, creation, and CSV export
-- Forecasting dashboard with growth and confidence metrics
-- Payment workflow: `Unpaid`, `Pending`, and `Paid` statuses
-- Due-date reminders scheduled daily at 9:00 AM
-- PDF payment receipt generation for paid orders
-- Payment status audit trail
+- Report search, filters, creation, and CSV export
+- Payment workflow with reminders, audit history, and PDF receipts
 
 ## Tech stack
 
-| Layer    | Technologies                                                     |
-| -------- | ---------------------------------------------------------------- |
-| Frontend | React, Vite, React Router, Recharts, Tailwind CSS, Axios, Lucide |
-| Backend  | Node.js, Express, JWT, bcrypt, Multer                            |
-| Database | MySQL                                                            |
-| Payments | node-cron, Nodemailer, PDFKit                                    |
-
-## Project structure
-
-```text
-Business-Analytics-Dashboard/
-├── client/                 # React application
-├── server/                 # Express API
-│   ├── controllers/
-│   ├── routes/
-│   ├── services/
-│   └── schema.sql          # Payment tables
-└── README.md
-```
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React, Vite, React Router, Recharts, Tailwind CSS, Axios |
+| Backend | Node.js, Express, JWT, bcrypt, Multer |
+| Database | MongoDB with Mongoose |
+| Payments | node-cron, Nodemailer, PDFKit |
 
 ## Local setup
 
@@ -43,26 +26,18 @@ Business-Analytics-Dashboard/
 ```bash
 git clone https://github.com/pratikdesai472006/Business-Analytics-Dashboard.git
 cd Business-Analytics-Dashboard
-
 cd server && npm install
 cd ../client && npm install
 ```
 
-### 2. Configure MySQL
+### 2. Configure MongoDB
 
-Create a database, run the existing users-table setup if it has not already been created, then import the payment schema:
+No customer needs to install MySQL or run database commands. Create a free [MongoDB Atlas](https://www.mongodb.com/atlas/database) cluster, create a database user, allow your application's IP address, and copy its connection string.
 
-```bash
-mysql -u root -p your_database_name < server/schema.sql
-```
-
-Create `server/.env`:
+Copy `server/.env.example` to `server/.env` and set the values:
 
 ```env
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=business_analytics
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/business_analytics?retryWrites=true&w=majority
 JWT_SECRET=replace_with_a_long_random_secret
 PORT=5000
 
@@ -98,39 +73,24 @@ npm run dev
 
 Open `http://localhost:5173`.
 
+MongoDB collections and indexes are created automatically; there is no schema import or manual database setup step.
+
 ## Payment reminders and receipts
 
-Orders are stored with a due date and start as **Unpaid**. A scheduled task runs every day at 9:00 AM:
-
-- Sends a reminder one day before the due date.
-- Continues daily reminders while an order is `Unpaid` or `Pending`.
-- Stops as soon as the order is marked `Paid`.
-- Generates a downloadable PDF receipt for paid orders.
-
-If SMTP credentials are not configured, reminder events are written to the server console. This allows safe local testing without emailing anyone.
+Orders start as **Unpaid**. A scheduled task runs every day at 9:00 AM, sends due reminders, stops once an order is marked **Paid**, and generates downloadable PDF receipts for paid orders. If SMTP credentials are not configured, reminders are logged by the server for safe local testing.
 
 ## Deployment
 
-Deploy the frontend on Vercel:
+Deploy the frontend on Vercel with `client` as the root directory and set `VITE_API_URL=https://your-api-domain/api`.
 
-1. Import this GitHub repository.
-2. Set the Vercel root directory to `client`.
-3. Add `VITE_API_URL=https://your-api-domain/api` as an environment variable.
-4. Deploy.
-
-Deploy the Express API and MySQL database separately (for example, Render/Railway plus a MySQL provider). Configure the server environment variables above on the backend host.
+Deploy the Express API on Render, Railway, or another Node host. Set `MONGODB_URI`, `JWT_SECRET`, and optional mail variables on the backend host. Use MongoDB Atlas as the managed database so customers never need a local database installation.
 
 ## Useful scripts
 
 ```bash
-# Frontend quality checks
-cd client
-npm run lint
-npm run build
-
-# Run backend
-cd server
-npm run dev
+cd client && npm run lint
+cd client && npm run build
+cd server && npm run dev
 ```
 
 ## License
