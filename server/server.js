@@ -10,24 +10,37 @@ const connectDatabase = require("./config/db");
 const { sendDueReminders } = require("./services/reminderService");
 
 const app = express();
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "")
+const clientOrigin = process.env.CLIENT_ORIGIN || "";
+const allowedOrigins = clientOrigin
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+const allowAllOrigins = allowedOrigins.length === 0 || allowedOrigins.includes("*");
+
+console.log("CORS allowed origins:", allowAllOrigins ? ["*"] : allowedOrigins);
 
 app.set("trust proxy", 1);
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      if (!origin || allowAllOrigins || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error("Origin is not allowed by CORS"));
+      console.warn(`Blocked CORS origin: ${origin}`);
+      return callback(new Error(`Origin ${origin} is not allowed by CORS`));
     },
     methods: ["GET", "POST", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 204,
   }),
 );
+
+app.options("*", cors({
+  origin: allowAllOrigins ? true : allowedOrigins,
+  methods: ["GET", "POST", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204,
+}));
 app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", paymentRoutes);
