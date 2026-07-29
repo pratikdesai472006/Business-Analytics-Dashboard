@@ -1,359 +1,111 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  UploadCloud,
-  FileSpreadsheet,
-  CheckCircle2,
-  AlertCircle,
-  Download,
-  Plus,
-  Trash2,
-  Save,
+  UploadCloud, FileSpreadsheet, CheckCircle2, AlertCircle, Download, Plus, Trash2, Save,
 } from "lucide-react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import PageHeader from "../../components/common/PageHeader";
 import Badge from "../../components/common/Badge";
-const initialHistory = [
-  ["q2-sales.csv", "2.4 MB", "2,481 rows", "Today, 10:24 AM"],
-  ["customer-retention.csv", "884 KB", "1,209 rows", "Jul 24, 2026"],
-  ["transactions-june.csv", "4.1 MB", "5,798 rows", "Jun 30, 2026"],
-];
-const blank = () => ({
-  date: "",
-  orderId: "",
-  customer: "",
-  product: "",
-  revenue: "",
-  status: "Unpaid",
-});
+import api from "../../api/axios";
+
+const blank = () => ({ date: "", orderId: "", customer: "", product: "", revenue: "", status: "Unpaid" });
+const formatSize = (bytes) => (bytes ? `${(bytes / 1024 / 1024).toFixed(2)} MB` : "—");
+const formatDate = (date) => new Date(date).toLocaleString();
+
 function Upload() {
   const input = useRef();
-  const [file, setFile] = useState(null),
-    [drag, setDrag] = useState(false),
-    [mode, setMode] = useState("upload"),
-    [history, setHistory] = useState(initialHistory),
-    [rows, setRows] = useState([blank(), blank()]),
-    [notice, setNotice] = useState("");
-  const pick = (f) => {
-    if (!f) return;
-    if (!/\.(csv)$/i.test(f.name)) {
+  const [file, setFile] = useState(null);
+  const [drag, setDrag] = useState(false);
+  const [mode, setMode] = useState("upload");
+  const [history, setHistory] = useState([]);
+  const [rows, setRows] = useState([blank(), blank()]);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const token = localStorage.getItem("token");
+  const auth = { headers: { Authorization: `Bearer ${token}` } };
+
+  useEffect(() => {
+    let active = true;
+    api
+      .get("/datasets", { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => {
+        if (active) {
+          setHistory(response.data.datasets);
+          setError("");
+        }
+      })
+      .catch(() => active && setError("Could not load your uploaded datasets. Please try again."))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [token]);
+
+  const pick = (selectedFile) => {
+    if (!selectedFile) return;
+    if (!/\.csv$/i.test(selectedFile.name)) {
       setFile({ error: "Please choose a .csv file." });
       return;
     }
-    setFile(f);
+    setFile(selectedFile);
     setNotice("");
+    setError("");
   };
+
   const downloadTemplate = () => {
-    const csv =
-      "date,order_id,customer,product,revenue,status\n2026-07-28,ORD-1001,Aarav Mehta,Enterprise plan,18500,Unpaid";
+    const csv = "date,order_id,customer,product,revenue,status\n2026-07-28,ORD-1001,Aarav Mehta,Enterprise plan,18500,Unpaid";
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     a.download = "aperture-data-template.csv";
     a.click();
     URL.revokeObjectURL(a.href);
   };
-  const processFile = () => {
-    if (!file || file.error) return;
-    setHistory([
-      [
-        file.name,
-        `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-        "Ready to process",
-        "Just now",
-      ],
-      ...history,
-    ]);
-    setNotice(`${file.name} was added to your data sources.`);
-    setFile(null);
-  };
-  const setCell = (index, key, value) =>
-    setRows(
-      rows.map((row, i) => (i === index ? { ...row, [key]: value } : row)),
-    );
-  const saveManual = () => {
-    const complete = rows.filter((r) => Object.values(r).every(Boolean));
-    if (!complete.length) {
-      setNotice("Add at least one complete row before saving.");
-      return;
+
+  const processFile = async () => {
+    if (!file || file.error || saving) return;
+    setSaving(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const response = await api.post("/datasets/upload", body, auth);
+      setHistory((current) => [response.data.dataset, ...current]);
+      setNotice(`${file.name} was saved and is ready for analysis.`);
+      setFile(null);
+      input.current.value = "";
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Could not upload the CSV file.");
+    } finally {
+      setSaving(false);
     }
-    setHistory([
-      [
-        `manual-entry-${new Date().toLocaleDateString("en-CA")}.csv`,
-        "—",
-        `${complete.length} rows`,
-        "Just now",
-      ],
-      ...history,
-    ]);
-    setNotice(`${complete.length} manual records were added successfully.`);
-    setRows([blank(), blank()]);
   };
+
+  const setCell = (index, key, value) => setRows(rows.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
+  const saveManual = async () => {
+    const complete = rows.filter((row) => Object.values(row).every(Boolean));
+    if (!complete.length) return setError("Add at least one complete row before saving.");
+    setSaving(true);
+    try {
+      const name = `manual-entry-${new Date().toLocaleDateString("en-CA")}.csv`;
+      const response = await api.post("/datasets/manual", { name, rows: complete }, auth);
+      setHistory((current) => [response.data.dataset, ...current]);
+      setNotice(`${complete.length} manual records were saved successfully.`);
+      setRows([blank(), blank()]);
+      setError("");
+    } catch {
+      setError("Could not save manual records. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <DashboardLayout>
-      <PageHeader
-        eyebrow="Data sources"
-        title="Bring your data to life"
-        description="Upload a CSV or enter records manually for immediate analysis."
-        action={
-          <div className="flex rounded-xl bg-slate-100 p-1">
-            <button
-              onClick={() => setMode("upload")}
-              className={`rounded-lg px-3 py-2 text-sm font-semibold ${mode === "upload" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}
-            >
-              Upload CSV
-            </button>
-            <button
-              onClick={() => setMode("manual")}
-              className={`rounded-lg px-3 py-2 text-sm font-semibold ${mode === "manual" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}
-            >
-              Enter data
-            </button>
-          </div>
-        }
-      />
-      {notice && (
-        <div className="mb-5 flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          <span>{notice}</span>
-          <button onClick={() => setNotice("")} aria-label="Dismiss">
-            ×
-          </button>
-        </div>
-      )}
-      {mode === "upload" ? (
-        <section className="grid gap-5 xl:grid-cols-3">
-          <article className="surface p-6 xl:col-span-2">
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDrag(true);
-              }}
-              onDragLeave={() => setDrag(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDrag(false);
-                pick(e.dataTransfer.files[0]);
-              }}
-              onClick={() => input.current.click()}
-              className={`dropzone ${drag ? "dragging" : ""}`}
-            >
-              <input
-                ref={input}
-                className="hidden"
-                type="file"
-                accept=".csv,text/csv"
-                onChange={(e) => pick(e.target.files[0])}
-              />
-              {file?.error ? (
-                <AlertCircle className="mx-auto text-red-500" size={36} />
-              ) : file ? (
-                <CheckCircle2 className="mx-auto text-emerald-500" size={36} />
-              ) : (
-                <span className="inline-grid place-items-center w-14 h-14 rounded-2xl bg-blue-100 text-blue-600">
-                  <UploadCloud size={27} />
-                </span>
-              )}
-              <h3 className="mt-4 font-bold">
-                {file?.error
-                  ? "Upload needs attention"
-                  : file
-                    ? file.name
-                    : "Drop your CSV file here"}
-              </h3>
-              <p className="mt-2 text-sm text-slate-500">
-                {file?.error || file
-                  ? `${file.size ? (file.size / 1024 / 1024).toFixed(2) + " MB" : ""} · Ready to process`
-                  : "or click to browse files from your computer"}
-              </p>
-              <button className="mt-5 px-4 py-2.5 rounded-xl bg-blue-600 text-sm font-semibold text-white">
-                {file ? "Choose another file" : "Select CSV file"}
-              </button>
-            </div>
-            {file && !file.error && (
-              <div className="mt-5 flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm">
-                <CheckCircle2 className="text-emerald-600" size={19} />
-                <span>
-                  <b>File validated.</b> Your dataset is ready for analysis.
-                </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    processFile();
-                  }}
-                  className="ml-auto rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white"
-                >
-                  Process data
-                </button>
-              </div>
-            )}
-          </article>
-          <aside className="surface p-6">
-            <h3 className="font-bold">Before you upload</h3>
-            <div className="mt-5 space-y-5 text-sm text-slate-600">
-              <p>
-                <b className="block text-slate-900">Use a tidy CSV</b>
-                <span className="text-xs">
-                  One header row, consistent dates and amounts.
-                </span>
-              </p>
-              <p>
-                <b className="block text-slate-900">Recommended columns</b>
-                <span className="text-xs">
-                  Date, order ID, customer, product, revenue, status.
-                </span>
-              </p>
-              <p>
-                <b className="block text-slate-900">Need a starting point?</b>
-                <span className="text-xs">
-                  Download the data template, then replace its example row.
-                </span>
-              </p>
-            </div>
-            <button
-              onClick={downloadTemplate}
-              className="mt-6 flex items-center gap-2 text-sm font-semibold text-blue-600"
-            >
-              <Download size={16} /> Download CSV template
-            </button>
-          </aside>
-        </section>
-      ) : (
-        <section className="surface p-5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="font-bold">Manual data entry</h3>
-              <p className="mt-1 text-xs text-slate-500">
-                New entries are unpaid by default; update the status when
-                payment is received.
-              </p>
-            </div>
-            <button
-              onClick={() => setRows([...rows, blank()])}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold"
-            >
-              <Plus size={16} /> Add row
-            </button>
-          </div>
-          <div className="table-wrap mt-5">
-            <table className="data-table min-w-[860px]">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Order ID</th>
-                  <th>Customer</th>
-                  <th>Product</th>
-                  <th>Revenue (₹)</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, i) => (
-                  <tr key={i}>
-                    {[
-                      ["date", "date"],
-                      ["orderId", "text"],
-                      ["customer", "text"],
-                      ["product", "text"],
-                      ["revenue", "number"],
-                    ].map(([key, type]) => (
-                      <td key={key}>
-                        <input
-                          type={type}
-                          value={row[key]}
-                          onChange={(e) => setCell(i, key, e.target.value)}
-                          className="form-input min-w-28 py-2 text-sm"
-                          placeholder={
-                            key === "orderId"
-                              ? "ORD-1001"
-                              : key === "revenue"
-                                ? "0.00"
-                                : ""
-                          }
-                        />
-                      </td>
-                    ))}
-                    <td>
-                      <select
-                        value={row.status}
-                        onChange={(e) => setCell(i, "status", e.target.value)}
-                        className="form-input min-w-24 py-2 text-sm"
-                      >
-                        <option>Unpaid</option>
-                        <option>Pending</option>
-                        <option>Paid</option>
-                      </select>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() =>
-                          setRows(
-                            rows.length === 1
-                              ? [blank()]
-                              : rows.filter((_, n) => n !== i),
-                          )
-                        }
-                        className="icon-button text-red-500"
-                        aria-label="Remove row"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-5 flex justify-end">
-            <button
-              onClick={saveManual}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white"
-            >
-              <Save size={16} /> Save records
-            </button>
-          </div>
-        </section>
-      )}
-      <section className="surface mt-5">
-        <div className="flex justify-between p-5">
-          <div>
-            <h3 className="font-bold">Upload history</h3>
-            <p className="mt-1 text-xs text-slate-500">
-              Your latest processed data sources
-            </p>
-          </div>
-        </div>
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>File name</th>
-                <th>Size</th>
-                <th>Records</th>
-                <th>Uploaded</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((r) => (
-                <tr key={`${r[0]}-${r[3]}`}>
-                  <td>
-                    <span className="flex items-center gap-2 font-semibold">
-                      <FileSpreadsheet size={17} className="text-emerald-600" />
-                      {r[0]}
-                    </span>
-                  </td>
-                  <td>{r[1]}</td>
-                  <td>{r[2]}</td>
-                  <td>{r[3]}</td>
-                  <td>
-                    <Badge tone="green">Processed</Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <PageHeader eyebrow="Data sources" title="Bring your data to life" description="Upload a CSV or enter records manually for immediate analysis." action={<div className="flex rounded-xl bg-slate-100 p-1"><button onClick={() => setMode("upload")} className={`rounded-lg px-3 py-2 text-sm font-semibold ${mode === "upload" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>Upload CSV</button><button onClick={() => setMode("manual")} className={`rounded-lg px-3 py-2 text-sm font-semibold ${mode === "manual" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>Enter data</button></div>} />
+      {notice && <div className="mb-5 flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Dismiss">×</button></div>}
+      {error && <div className="mb-5 flex items-center justify-between rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"><span>{error}</span><button onClick={() => setError("")} aria-label="Dismiss">×</button></div>}
+      {mode === "upload" ? <section className="grid gap-5 xl:grid-cols-3"><article className="surface p-6 xl:col-span-2"><div onDragOver={(event) => { event.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={(event) => { event.preventDefault(); setDrag(false); pick(event.dataTransfer.files[0]); }} onClick={() => input.current.click()} className={`dropzone ${drag ? "dragging" : ""}`}><input ref={input} className="hidden" type="file" accept=".csv,text/csv" onChange={(event) => pick(event.target.files[0])} />{file?.error ? <AlertCircle className="mx-auto text-red-500" size={36} /> : file ? <CheckCircle2 className="mx-auto text-emerald-500" size={36} /> : <span className="inline-grid place-items-center w-14 h-14 rounded-2xl bg-blue-100 text-blue-600"><UploadCloud size={27} /></span>}<h3 className="mt-4 font-bold">{file?.error ? "Upload needs attention" : file ? file.name : "Drop your CSV file here"}</h3><p className="mt-2 text-sm text-slate-500">{file?.error || file ? `${file.size ? formatSize(file.size) : ""} · Ready to process` : "or click to browse files from your computer"}</p><button className="mt-5 px-4 py-2.5 rounded-xl bg-blue-600 text-sm font-semibold text-white">{file ? "Choose another file" : "Select CSV file"}</button></div>{file && !file.error && <div className="mt-5 flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm"><CheckCircle2 className="text-emerald-600" size={19} /><span><b>File validated.</b> Your dataset is ready for analysis.</span><button onClick={(event) => { event.stopPropagation(); processFile(); }} disabled={saving} className="ml-auto rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60">{saving ? "Saving..." : "Process data"}</button></div>}</article><aside className="surface p-6"><h3 className="font-bold">Before you upload</h3><div className="mt-5 space-y-5 text-sm text-slate-600"><p><b className="block text-slate-900">Use a tidy CSV</b><span className="text-xs">One header row, consistent dates and amounts.</span></p><p><b className="block text-slate-900">Recommended columns</b><span className="text-xs">Date, order ID, customer, product, revenue, status.</span></p></div><button onClick={downloadTemplate} className="mt-6 flex items-center gap-2 text-sm font-semibold text-blue-600"><Download size={16} /> Download CSV template</button></aside></section> : <section className="surface p-5"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="font-bold">Manual data entry</h3><p className="mt-1 text-xs text-slate-500">New entries are unpaid by default; update the status when payment is received.</p></div><button onClick={() => setRows([...rows, blank()])} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold"><Plus size={16} /> Add row</button></div><div className="table-wrap mt-5"><table className="data-table min-w-[860px]"><thead><tr><th>Date</th><th>Order ID</th><th>Customer</th><th>Product</th><th>Revenue (₹)</th><th>Status</th><th></th></tr></thead><tbody>{rows.map((row, index) => <tr key={index}>{[["date", "date"], ["orderId", "text"], ["customer", "text"], ["product", "text"], ["revenue", "number"]].map(([key, type]) => <td key={key}><input type={type} value={row[key]} onChange={(event) => setCell(index, key, event.target.value)} className="form-input min-w-28 py-2 text-sm" /></td>)}<td><select value={row.status} onChange={(event) => setCell(index, "status", event.target.value)} className="form-input min-w-24 py-2 text-sm"><option>Unpaid</option><option>Pending</option><option>Paid</option></select></td><td><button onClick={() => setRows(rows.length === 1 ? [blank()] : rows.filter((_, itemIndex) => itemIndex !== index))} className="icon-button text-red-500" aria-label="Remove row"><Trash2 size={16} /></button></td></tr>)}</tbody></table></div><div className="mt-5 flex justify-end"><button onClick={saveManual} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"><Save size={16} /> {saving ? "Saving..." : "Save records"}</button></div></section>}
+      <section className="surface mt-5"><div className="flex justify-between p-5"><div><h3 className="font-bold">Upload history</h3><p className="mt-1 text-xs text-slate-500">Your saved data sources</p></div></div>{loading ? <p className="px-5 pb-5 text-sm text-slate-500">Loading datasets...</p> : history.length === 0 ? <div className="px-5 pb-6 text-center text-sm text-slate-500"><FileSpreadsheet className="mx-auto mb-2 text-slate-400" size={28} />You have not uploaded any datasets yet.</div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>File name</th><th>Size</th><th>Records</th><th>Uploaded</th><th>Status</th></tr></thead><tbody>{history.map((dataset) => <tr key={dataset.id}><td><span className="flex items-center gap-2 font-semibold"><FileSpreadsheet size={17} className="text-emerald-600" />{dataset.name}</span></td><td>{formatSize(dataset.fileSize)}</td><td>{dataset.rowCount.toLocaleString()} rows</td><td>{formatDate(dataset.createdAt)}</td><td><Badge tone="green">Processed</Badge></td></tr>)}</tbody></table></div>}</section>
     </DashboardLayout>
   );
 }
+
 export default Upload;

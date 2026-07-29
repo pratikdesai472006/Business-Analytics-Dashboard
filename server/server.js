@@ -5,6 +5,7 @@ require("dotenv").config();
 
 const authRoutes = require("./routes/authRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
+const datasetRoutes = require("./routes/datasetRoutes");
 const connectDatabase = require("./config/db");
 const { sendDueReminders } = require("./services/reminderService");
 
@@ -30,6 +31,7 @@ app.use(
 app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", paymentRoutes);
+app.use("/api/datasets", datasetRoutes);
 app.get("/", (req, res) => res.json({ success: true, message: "Backend is running successfully!" }));
 app.get("/api/health", (req, res) => res.json({ success: true, message: "API is healthy" }));
 
