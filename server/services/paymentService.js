@@ -22,10 +22,11 @@ const dueForReminder = async () => {
   return orders.map((order) => ({ ...order, id: String(order._id), customer_name: order.customerName, customer_email: order.customerEmail, due_date: order.dueDate, owner_email: order.userId?.email, full_name: order.userId?.fullName }));
 };
 const recordReminder = (id) => Order.updateOne({ _id: id }, { lastReminderAt: new Date() });
-const createReceipt = (orderId, receiptNumber, filePath) => Order.updateOne({ _id: orderId }, { $push: { receipts: { receiptNumber, filePath } } });
+const createReceipt = (orderId, receiptNumber, data) =>
+  Order.updateOne({ _id: orderId }, { $push: { receipts: { receiptNumber, data } } });
 const getReceipt = async (orderId, userId) => {
   const order = await Order.findOne({ _id: orderId, userId }).select("receipts").lean();
   const receipt = order?.receipts?.at(-1);
-  return receipt ? [{ receipt_number: receipt.receiptNumber, file_path: receipt.filePath }] : [];
+  return receipt ? [{ receipt_number: receipt.receiptNumber, data: receipt.data }] : [];
 };
 module.exports = { listOrders, createOrder, getOrder, updateStatus, audit, dueForReminder, recordReminder, createReceipt, getReceipt };

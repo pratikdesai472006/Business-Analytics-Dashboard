@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const receiptSchema = new mongoose.Schema(
-  { receiptNumber: { type: String, required: true }, filePath: { type: String, required: true } },
+  { receiptNumber: { type: String, required: true }, data: { type: Buffer, required: true } },
   { timestamps: true },
 );
 const auditSchema = new mongoose.Schema(
