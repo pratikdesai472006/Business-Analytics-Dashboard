@@ -108,7 +108,7 @@ const getActiveDataset = async (userId) => {
   }
   return dataset;
 };
-const datasetRows = (datasetId, userId) => DatasetRow.find({ datasetId, userId }).sort({ rowNumber: 1 }).select("rowNumber data").lean();
+const datasetRows = (datasetId) => DatasetRow.find({ datasetId }).sort({ rowNumber: 1 }).select("rowNumber data").lean();
 const activateDataset = async (userId, datasetId) => {
   const dataset = await Dataset.findOne({ _id: datasetId, userId });
   if (!dataset) return null;
