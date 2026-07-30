@@ -203,9 +203,11 @@ export const buildDashboardAnalytics = (dataset, rows) => {
     forecastData,
     insights: buildInsights(rows, summary),
     reports: [
-      { name: `${dataset?.name || "Active dataset"} summary`, category: "Revenue", period: "Current upload", updated: new Date(dataset?.updatedAt || dataset?.createdAt || Date.now()).toLocaleDateString("en-IN"), status: "Ready" },
-      { name: `${dataset?.name || "Active dataset"} customer view`, category: "Customers", period: "Current upload", updated: new Date(dataset?.updatedAt || dataset?.createdAt || Date.now()).toLocaleDateString("en-IN"), status: "Ready" },
+      { name: `${dataset?.name || "Active dataset"} revenue summary`, category: "Revenue", period: "Current upload", updated: new Date(dataset?.updatedAt || dataset?.createdAt || Date.now()).toLocaleDateString("en-IN"), status: "Ready" },
+      { name: `${dataset?.name || "Active dataset"} sales performance`, category: "Sales", period: "Current upload", updated: new Date(dataset?.updatedAt || dataset?.createdAt || Date.now()).toLocaleDateString("en-IN"), status: "Ready" },
+      { name: `${dataset?.name || "Active dataset"} customer breakdown`, category: "Customers", period: "Current upload", updated: new Date(dataset?.updatedAt || dataset?.createdAt || Date.now()).toLocaleDateString("en-IN"), status: "Ready" },
       { name: `${dataset?.name || "Active dataset"} growth outlook`, category: "Growth", period: "Current upload", updated: new Date(dataset?.updatedAt || dataset?.createdAt || Date.now()).toLocaleDateString("en-IN"), status: "Ready" },
+      { name: `${dataset?.name || "Active dataset"} product performance`, category: "Products", period: "Current upload", updated: new Date(dataset?.updatedAt || dataset?.createdAt || Date.now()).toLocaleDateString("en-IN"), status: "Ready" },
     ],
   };
 };

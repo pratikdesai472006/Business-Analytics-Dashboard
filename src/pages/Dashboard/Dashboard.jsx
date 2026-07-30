@@ -38,14 +38,14 @@ function Dashboard() {
     const token = localStorage.getItem("token");
     const headers = { headers: { Authorization: `Bearer ${token}` } };
     if (force) clearAnalyticsCache();
-    setLoading(true);
 
     try {
       const analyticsRes = await fetchActiveAnalytics(api, headers, force);
-      setAnalytics(analyticsRes.data);
+      if (analyticsRes?.data) {
+        setAnalytics(analyticsRes.data);
+      }
     } catch (err) {
       console.error("Dashboard analytics error:", err);
-      setAnalytics(null);
     }
 
     try {
@@ -53,20 +53,17 @@ function Dashboard() {
       setOrders(ordersRes.data.orders || []);
     } catch (err) {
       console.error("Dashboard orders error:", err);
-      setOrders([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    refreshData(true);
-    const onRefresh = () => refreshData(true);
-    window.addEventListener("focus", onRefresh);
-    window.addEventListener("dataset:updated", onRefresh);
+    refreshData(false);
+    const onDatasetUpdate = () => refreshData(true);
+    window.addEventListener("dataset:updated", onDatasetUpdate);
     return () => {
-      window.removeEventListener("focus", onRefresh);
-      window.removeEventListener("dataset:updated", onRefresh);
+      window.removeEventListener("dataset:updated", onDatasetUpdate);
     };
   }, [refreshData]);
 

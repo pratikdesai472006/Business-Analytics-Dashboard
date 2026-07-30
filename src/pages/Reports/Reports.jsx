@@ -222,50 +222,69 @@ function Reports() {
             </select>
           </div>
         </div>
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Report</th>
-                <th>Category</th>
-                <th>Period</th>
-                <th>Updated</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((r) => (
-                <tr key={`${r.name}-${r.updated}`}>
-                  <td>
-                    <span className="flex items-center gap-3 font-semibold">
-                      <span className="grid place-items-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600">
-                        <FileText size={16} />
-                      </span>
-                      {r.name}
-                    </span>
-                  </td>
-                  <td>{r.category}</td>
-                  <td>{r.period}</td>
-                  <td>{r.updated}</td>
-                  <td>
-                    <Badge tone={r.status === "Ready" ? "green" : "amber"}>
-                      {r.status}
-                    </Badge>
-                  </td>
-                  <td>
-                    <button
-                      onClick={() => exportFile(r)}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-blue-600"
-                    >
-                      <Download size={15} /> Export
-                    </button>
-                  </td>
+        {shown.length === 0 ? (
+          <div className="p-8 text-center text-sm text-slate-500">
+            <FileText className="mx-auto mb-2 text-slate-400" size={32} />
+            <p className="font-semibold text-slate-700">No reports found for "{category === "All" ? query || "all" : category}"</p>
+            <p className="mt-1 text-xs text-slate-500">Try selecting a different category or clearing your search filter.</p>
+            <div className="mt-4">
+              <button
+                onClick={() => {
+                  setQuery("");
+                  setCategory("All");
+                }}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white"
+              >
+                Show all reports
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Report</th>
+                  <th>Category</th>
+                  <th>Period</th>
+                  <th>Updated</th>
+                  <th>Status</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {shown.map((r) => (
+                  <tr key={`${r.name}-${r.updated}`}>
+                    <td>
+                      <span className="flex items-center gap-3 font-semibold">
+                        <span className="grid place-items-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600">
+                          <FileText size={16} />
+                        </span>
+                        {r.name}
+                      </span>
+                    </td>
+                    <td>{r.category}</td>
+                    <td>{r.period}</td>
+                    <td>{r.updated}</td>
+                    <td>
+                      <Badge tone={r.status === "Ready" ? "green" : "amber"}>
+                        {r.status}
+                      </Badge>
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => exportFile(r)}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-blue-600"
+                      >
+                        <Download size={15} /> Export
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
         <div className="flex justify-between border-t border-slate-100 p-4 text-xs text-slate-500">
           <span>
             Showing {shown.length} of {reports.length} reports
