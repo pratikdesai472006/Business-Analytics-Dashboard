@@ -1,98 +1,97 @@
-# Aperture Business Analytics Dashboard
+# Business Analytics Dashboard
 
-A full-stack business dashboard for tracking revenue, orders, customers, payment status, reports, and forecasts.
+A fully serverless MERN Business Analytics Dashboard application hosted on **Vercel** with **MongoDB Atlas**.
 
-## Features
+## Architecture Overview
 
-- JWT authentication with protected routes
-- Responsive analytics dashboard with KPI cards and revenue charts
-- CSV upload and spreadsheet-style manual entry UI
-- Report search, filters, creation, and CSV export
-- Payment workflow with reminders, audit history, and PDF receipts
+- **Frontend**: React 19 + Vite SPA (served by Vercel Edge CDN)
+- **Backend API**: Vercel Serverless Functions (`/api/*`)
+- **Database**: MongoDB Atlas (with cached connection pooling optimized for serverless)
+- **Authentication**: JWT Authentication (Serverless protected endpoints)
+- **Automated Tasks**: Vercel Cron Jobs (`/api/cron/reminders`)
+- **Hosting**: 100% Vercel (No Express server, no `server.js`, no Render required)
 
-## Tech stack
+---
 
-| Layer | Technologies |
-| --- | --- |
-| Frontend | React, Vite, React Router, Recharts, Tailwind CSS, Axios |
-| Backend | Node.js, Express, JWT, bcrypt, Multer |
-| Database | MongoDB with Mongoose |
-| Payments | node-cron, Nodemailer, PDFKit |
+## Folder Structure
 
-## Local setup
+```
+├── api/                        # Vercel Serverless Functions
+│   ├── auth/
+│   │   ├── login.js            # POST /api/auth/login
+│   │   ├── register.js         # POST /api/auth/register
+│   │   └── me.js               # GET /api/auth/me
+│   ├── datasets/
+│   │   ├── index.js            # GET /api/datasets
+│   │   ├── active.js           # GET /api/datasets/active
+│   │   ├── upload.js           # POST /api/datasets/upload (Busboy CSV parser)
+│   │   ├── manual.js           # POST /api/datasets/manual
+│   │   ├── active/
+│   │   │   └── analytics.js    # GET /api/datasets/active/analytics
+│   │   └── [id]/
+│   │       ├── activate.js     # PATCH /api/datasets/:id/activate
+│   │       ├── rename.js       # PATCH /api/datasets/:id/rename
+│   │       ├── index.js        # DELETE /api/datasets/:id
+│   │       ├── rows.js         # GET /api/datasets/:id/rows
+│   │       ├── file.js         # GET /api/datasets/:id/file
+│   │       └── export.js       # GET /api/datasets/:id/export
+│   ├── orders/
+│   │   ├── index.js            # GET/POST /api/orders
+│   │   └── [id]/
+│   │       ├── status.js       # PATCH /api/orders/:id/status
+│   │       └── receipt.js      # GET /api/orders/:id/receipt (PDF generation)
+│   ├── cron/
+│   │   └── reminders.js        # Vercel Cron daily email reminders
+│   └── health.js               # GET /api/health
+├── lib/
+│   ├── mongodb.js              # Serverless MongoDB cached connection pool
+│   └── auth.js                 # Serverless JWT verification & protect wrapper
+├── models/                     # Mongoose Models (User, Dataset, DatasetRow, Order)
+├── services/                   # Business Services (auth, dataset, payment, reminder)
+├── utils/                      # Utilities (analyticsEngine, generateToken, parseCsv)
+├── src/                        # React Frontend (Vite)
+├── public/                     # Static assets (Favicon, SVG icons)
+├── vercel.json                 # Vercel routing & Cron configuration
+└── package.json                # Project dependencies
+```
 
-### 1. Clone and install dependencies
+---
+
+## Environment Variables Needed in Vercel
+
+Set these in **Vercel Dashboard → Project Settings → Environment Variables**:
+
+| Variable | Required | Description |
+|---|---|---|
+| `MONGODB_URI` | Yes | MongoDB Atlas connection string |
+| `JWT_SECRET` | Yes | Secret key for signing JWT tokens |
+| `SMTP_HOST` | Optional | SMTP host for email reminders (e.g. `smtp.gmail.com`) |
+| `SMTP_PORT` | Optional | SMTP port (e.g. `587`) |
+| `SMTP_SECURE` | Optional | Set to `true` for port 465, `false` for 587 |
+| `SMTP_USER` | Optional | SMTP username / email address |
+| `SMTP_PASS` | Optional | SMTP password / app password |
+| `MAIL_FROM` | Optional | Sender display name and email |
+| `CRON_SECRET` | Optional | Optional secret token for Vercel Cron header |
+
+---
+
+## Local Development
 
 ```bash
-git clone https://github.com/pratikdesai472006/Business-Analytics-Dashboard.git
-cd Business-Analytics-Dashboard
-cd server && npm install
-cd ../client && npm install
-```
+# 1. Install dependencies
+npm install
 
-### 2. Configure MongoDB
-
-No customer needs to install MySQL or run database commands. Create a free [MongoDB Atlas](https://www.mongodb.com/atlas/database) cluster, create a database user, allow your application's IP address, and copy its connection string.
-
-Copy `server/.env.example` to `server/.env` and set the values:
-
-```env
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/business_analytics?retryWrites=true&w=majority
-JWT_SECRET=replace_with_a_long_random_secret
-PORT=5000
-
-# Optional: enable real reminder emails
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USER=your-email@example.com
-SMTP_PASS=your-app-password
-MAIL_FROM=your-email@example.com
-```
-
-Create `client/.env` for local development:
-
-```env
-VITE_API_URL=http://localhost:5000/api
-```
-
-### 3. Start the application
-
-Run the API:
-
-```bash
-cd server
+# 2. Run local development server with Vercel CLI (or Vite)
+npx vercel dev
+# or
 npm run dev
 ```
 
-Run the frontend in a separate terminal:
+---
 
-```bash
-cd client
-npm run dev
-```
+## Deployment to Vercel
 
-Open `http://localhost:5173`.
-
-MongoDB collections and indexes are created automatically; there is no schema import or manual database setup step.
-
-## Payment reminders and receipts
-
-Orders start as **Unpaid**. A scheduled task runs every day at 9:00 AM, sends due reminders, stops once an order is marked **Paid**, and generates downloadable PDF receipts for paid orders. If SMTP credentials are not configured, reminders are logged by the server for safe local testing.
-
-## Deployment
-
-Deploy the frontend on Vercel with `client` as the root directory and set `VITE_API_URL=https://your-api-domain/api`.
-
-Deploy the Express API on Render, Railway, or another Node host. Set `MONGODB_URI`, `JWT_SECRET`, and optional mail variables on the backend host. Use MongoDB Atlas as the managed database so customers never need a local database installation.
-
-## Useful scripts
-
-```bash
-cd client && npm run lint
-cd client && npm run build
-cd server && npm run dev
-```
-
-## License
-
-This project is for portfolio and educational use.
+1. Push this repository to GitHub / GitLab / Bitbucket.
+2. Import project into Vercel.
+3. Configure the environment variables (`MONGODB_URI`, `JWT_SECRET`, etc.).
+4. Click **Deploy**. Vercel will automatically build the React frontend with Vite and deploy all `/api` functions as serverless endpoints.
