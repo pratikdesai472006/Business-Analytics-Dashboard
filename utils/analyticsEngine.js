@@ -139,9 +139,25 @@ const buildAnalytics = (dataset, rows) => {
   const recentRevenue = chartData[chartData.length - 1]?.value || 0;
   const previousRevenue = chartData[chartData.length - 2]?.value || 0;
   const growth = previousRevenue ? ((recentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+  const lastMonthName = chartData[chartData.length - 1]?.month;
   const forecastData = chartData.length ? [
     ...chartData.map((point) => ({ month: point.month, value: point.value, forecast: null })),
-    ...Array.from({ length: 6 }, (_, index) => ({ month: `Forecast ${index + 1}`, value: null, forecast: recentRevenue + (recentRevenue * 0.08 * (index + 1)) })),
+    ...Array.from({ length: 6 }, (_, index) => {
+      let baseDate = new Date();
+      if (lastMonthName) {
+        const parsed = new Date(Date.parse(`1 ${lastMonthName.replace(" (Est.)", "")}`));
+        if (!Number.isNaN(parsed.getTime())) {
+          baseDate = parsed;
+        }
+      }
+      const targetDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + index + 1, 1);
+      const formattedMonth = `${targetDate.toLocaleString("en-US", { month: "short", year: "numeric" })} (Est.)`;
+      return {
+        month: formattedMonth,
+        value: null,
+        forecast: Math.round(recentRevenue + (recentRevenue * Math.max(0.04, Math.min(0.15, growth / 100)) * (index + 1))),
+      };
+    }),
   ] : [];
 
   const summary = {

@@ -15,12 +15,21 @@ export const writeCachedAnalytics = (key, value) => {
   cache.set(key, { value, timestamp: Date.now() });
 };
 
-export const fetchActiveAnalytics = async (api, headers) => {
+export const clearAnalyticsCache = () => {
+  cache.clear();
+};
+
+export const fetchActiveAnalytics = async (api, headers, forceRefresh = false) => {
   const token = headers?.headers?.Authorization || "";
   const cacheKey = `analytics:${token}`;
-  const cached = readCachedAnalytics(cacheKey);
-  if (cached) {
-    return { data: cached, fromCache: true };
+
+  if (forceRefresh) {
+    cache.delete(cacheKey);
+  } else {
+    const cached = readCachedAnalytics(cacheKey);
+    if (cached) {
+      return { data: cached, fromCache: true };
+    }
   }
 
   const response = await api.get("/datasets/active/analytics", headers);

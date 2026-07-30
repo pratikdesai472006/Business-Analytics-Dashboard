@@ -99,7 +99,7 @@ function Forecast() {
         <article className="surface p-5 xl:col-span-2">
           <h3 className="font-bold">Revenue forecast</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Actual revenue through October · projected performance thereafter
+            {analytics?.summary?.datasetName ? `Using ${analytics.summary.datasetName} · Historical revenue performance and 6-month projected outlook` : "Monthly revenue trend and 6-month projected outlook"}
           </p>
           <div className="h-80 mt-4">
             <ResponsiveContainer>

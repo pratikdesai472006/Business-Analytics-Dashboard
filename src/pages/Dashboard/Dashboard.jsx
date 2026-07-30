@@ -24,7 +24,7 @@ import StatCard from "../../components/common/StatCard";
 import PageHeader from "../../components/common/PageHeader";
 import Badge from "../../components/common/Badge";
 import PageSkeleton from "../../components/common/PageSkeleton";
-import api from "../../api/axios";
+import { clearAnalyticsCache, fetchActiveAnalytics } from "../../utils/analyticsCache";
 
 function Dashboard() {
   const nav = useNavigate();
@@ -33,17 +33,18 @@ function Dashboard() {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshData = useCallback(async () => {
+  const refreshData = useCallback(async (force = false) => {
     const token = localStorage.getItem("token");
     const headers = { headers: { Authorization: `Bearer ${token}` } };
+    if (force) clearAnalyticsCache();
     setLoading(true);
     try {
       const [ordersRes, analyticsRes] = await Promise.all([
         api.get("/orders", headers),
-        api.get("/datasets/active/analytics", headers),
+        fetchActiveAnalytics(api, headers, force),
       ]);
       setOrders(ordersRes.data.orders || []);
-      setAnalytics(analyticsRes.data.analytics);
+      setAnalytics(analyticsRes.data);
     } catch {
       setOrders([]);
       setAnalytics(null);
@@ -53,8 +54,8 @@ function Dashboard() {
   }, []);
 
   useEffect(() => {
-    refreshData();
-    const onRefresh = () => refreshData();
+    refreshData(true);
+    const onRefresh = () => refreshData(true);
     window.addEventListener("focus", onRefresh);
     window.addEventListener("dataset:updated", onRefresh);
     return () => {
