@@ -25,6 +25,7 @@ import PageHeader from "../../components/common/PageHeader";
 import Badge from "../../components/common/Badge";
 import PageSkeleton from "../../components/common/PageSkeleton";
 import { clearAnalyticsCache, fetchActiveAnalytics } from "../../utils/analyticsCache";
+import api from "../../api/axios";
 
 function Dashboard() {
   const nav = useNavigate();
@@ -45,7 +46,8 @@ function Dashboard() {
       ]);
       setOrders(ordersRes.data.orders || []);
       setAnalytics(analyticsRes.data);
-    } catch {
+    } catch (err) {
+      console.error("Dashboard refresh error:", err);
       setOrders([]);
       setAnalytics(null);
     } finally {
