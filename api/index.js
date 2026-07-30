@@ -190,8 +190,12 @@ module.exports = async (req, res) => {
           let isLimitExceeded = false;
 
           busboy.on("file", (fieldname, file, filenameInfo) => {
-            if (filenameInfo && filenameInfo.filename) {
+            if (typeof filenameInfo === "string") {
+              originalName = filenameInfo;
+            } else if (filenameInfo && filenameInfo.filename) {
               originalName = filenameInfo.filename;
+            } else if (filenameInfo && typeof filenameInfo === "object" && filenameInfo.name) {
+              originalName = filenameInfo.name;
             }
             file.on("data", (data) => {
               fileBuffer = Buffer.concat([fileBuffer, data]);
@@ -385,6 +389,10 @@ module.exports = async (req, res) => {
     return res.status(404).json({ message: "API Endpoint not found" });
   } catch (error) {
     console.error("API Error:", error);
-    return res.status(500).json({ message: error.message || "Server Error" });
+    let msg = error.message || "Server Error";
+    if (msg.includes("bad auth") || msg.includes("Authentication failed")) {
+      msg = "MongoDB Atlas authentication failed. Please ensure your Database User password in Atlas is set to Pratik_123 under Database Access.";
+    }
+    return res.status(500).json({ message: msg });
   }
 };

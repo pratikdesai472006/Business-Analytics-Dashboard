@@ -140,12 +140,45 @@ const setCachedAnalytics = (userId, value) => {
   analyticsCache.set(getAnalyticsCacheKey(userId), { value, timestamp: Date.now() });
 };
 
+const parseCsv = require("../utils/parseCsv");
+const analyticsEngine = require("../utils/analyticsEngine");
+
+const getActiveDatasetAnalytics = async (userId) => {
+  const cached = getCachedAnalytics(userId);
+  if (cached) return cached;
+  const dataset = await getActiveDataset(userId);
+  if (!dataset) return { dataset: null, analytics: null };
+  const rows = await datasetRows(dataset._id, userId);
+  const analytics = analyticsEngine.buildAnalytics(dataset, rows);
+  setCachedAnalytics(userId, analytics);
+  return { dataset, analytics };
+};
+
+const processDatasetUpload = async (userId, originalname, csvText) => {
+  const { headers, rows } = parseCsv(csvText);
+  const buffer = Buffer.from(csvText, "utf8");
+  const dataset = await createCsvDataset({
+    userId,
+    file: {
+      originalname,
+      size: buffer.length,
+      buffer,
+    },
+    headers,
+    rows,
+  });
+  const analyticsResult = await getActiveDatasetAnalytics(userId);
+  return { dataset, analytics: analyticsResult.analytics };
+};
+
 module.exports = {
   createCsvDataset,
   createManualDataset,
   listDatasets,
   findDataset,
   getActiveDataset,
+  getActiveDatasetAnalytics,
+  processDatasetUpload,
   datasetRows,
   activateDataset,
   renameDataset,
