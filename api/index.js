@@ -251,14 +251,25 @@ module.exports = async (req, res) => {
 
       // 4B. MANUAL DATASET: POST /api/datasets/manual
       if (url.includes("/manual")) {
-        if (method !== "POST") return res.status(405).json({ message: "Method Not Allowed" });
+        if (method !== "POST") {
+          return res.status(405).json({ message: "Method Not Allowed" });
+        }
+
         const { name, rows } = body;
-        const result = await createManualDataset(userId, name, rows);
+
+        const dataset = await createManualDataset({
+          userId,
+          name,
+          rows,
+        });
+
+        const analyticsResult = await getActiveDatasetAnalytics(userId);
+
         return res.status(201).json({
           success: true,
           message: "Manual dataset created successfully",
-          dataset: result.dataset,
-          analytics: result.analytics,
+          dataset,
+          analytics: analyticsResult.analytics,
         });
       }
 
@@ -284,13 +295,20 @@ module.exports = async (req, res) => {
 
         // ACTIVATE: PATCH /api/datasets/:id/activate
         if (subpath.includes("/activate")) {
-          if (method !== "PATCH") return res.status(405).json({ message: "Method Not Allowed" });
-          const result = await setActiveDataset(userId, datasetId);
+          if (method !== "PATCH") {
+            return res.status(405).json({ message: "Method Not Allowed" });
+          }
+
+          await setActiveDataset(userId, datasetId);
+
+          const dataset = await getActiveDataset(userId);
+          const analyticsResult = await getActiveDatasetAnalytics(userId);
+
           return res.status(200).json({
             success: true,
             message: "Dataset activated successfully",
-            dataset: result.dataset,
-            analytics: result.analytics,
+            dataset,
+            analytics: analyticsResult.analytics,
           });
         }
 
