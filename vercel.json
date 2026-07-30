@@ -3,10 +3,7 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/api/auth/:path*", "destination": "/api/auth" },
-    { "source": "/api/datasets/:path*", "destination": "/api/datasets" },
-    { "source": "/api/orders/:path*", "destination": "/api/orders" },
-    { "source": "/api/cron/:path*", "destination": "/api/cron" }
+    { "source": "/api/(.*)", "destination": "/api/index" }
   ],
   "crons": [
     {
