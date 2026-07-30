@@ -97,7 +97,17 @@ const createManualDataset = async ({ userId, name, rows }) => {
 
 const listDatasets = (userId) => Dataset.find({ userId }).sort({ createdAt: -1 }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
 const findDataset = (id, userId) => Dataset.findOne({ _id: id, userId }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
-const getActiveDataset = (userId) => Dataset.findOne({ userId, isActive: true }).sort({ createdAt: -1 }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
+const getActiveDataset = async (userId) => {
+  let dataset = await Dataset.findOne({ userId, isActive: true }).sort({ updatedAt: -1 }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
+  if (!dataset) {
+    dataset = await Dataset.findOne({ userId }).sort({ createdAt: -1 }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
+    if (dataset) {
+      await setActiveDataset(userId, dataset._id);
+      dataset.isActive = true;
+    }
+  }
+  return dataset;
+};
 const datasetRows = (datasetId, userId) => DatasetRow.find({ datasetId, userId }).sort({ rowNumber: 1 }).select("rowNumber data").lean();
 const activateDataset = async (userId, datasetId) => {
   const dataset = await Dataset.findOne({ _id: datasetId, userId });
