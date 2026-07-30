@@ -54,16 +54,26 @@ function Reports() {
     [query, category, reports],
   );
 
-  const exportFile = (report) => {
-    const blob = new Blob(
-      [`Report,Category,Period,Status\n${[report.name, report.category, report.period, report.status].join(",")}`],
-      { type: "text/csv" },
-    );
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${report.name.toLowerCase().replaceAll(" ", "-")}.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+  const exportFile = async (report) => {
+    const token = localStorage.getItem("token");
+    const headers = { headers: { Authorization: `Bearer ${token}` } };
+    try {
+      const response = await api.get("/datasets/active/export", {
+        ...headers,
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], { type: "text/csv;charset=utf-8" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(report?.name || "business-report").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      window.alert("Unable to export the report right now.");
+    }
   };
 
   const create = (e) => {

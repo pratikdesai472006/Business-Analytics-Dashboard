@@ -287,6 +287,15 @@ module.exports = async (req, res) => {
         return res.status(200).json({ dataset });
       }
 
+      // 4E. ACTIVE DATASET EXPORT: GET /api/datasets/active/export
+      if (url.includes("/active/export")) {
+        if (method !== "GET") return res.status(405).json({ message: "Method Not Allowed" });
+        const result = await exportDatasetCsv(userId, null);
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+        return res.status(200).send(result.csvContent);
+      }
+
       // Matches /api/datasets/:id...
       const matches = url.match(/datasets\/([a-f0-9]{24})(.*)/i);
       if (matches) {

@@ -218,20 +218,134 @@ const getDatasetFile = async (userId, datasetId) => {
   return { filename: dataset.name, content: Buffer.concat(chunks) };
 };
 
-const exportDatasetCsv = async (userId, datasetId) => {
-  const dataset = await findDataset(datasetId, userId);
-  if (!dataset) throw new Error("Dataset not found");
-  const rows = await datasetRows(datasetId, userId);
-  const headers = dataset.headers || Object.keys(rows[0]?.data || {});
-  const csvLines = [headers.join(",")];
-  for (const r of rows) {
-    const values = headers.map((h) => {
-      const val = r.data[h] ?? "";
-      return typeof val === "string" && val.includes(",") ? `"${val}"` : val;
-    });
-    csvLines.push(values.join(","));
+const formatNumber = (value) => {
+  if (value === undefined || value === null || value === "") return "0";
+  const numeric = typeof value === "number" ? value : Number.parseFloat(String(value).replace(/[^0-9.-]/g, ""));
+  if (!Number.isFinite(numeric)) return "0";
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(numeric);
+};
+
+const formatPercent = (value) => {
+  if (value === undefined || value === null || value === "") return "0%";
+  const numeric = typeof value === "number" ? value : Number.parseFloat(String(value));
+  if (!Number.isFinite(numeric)) return "0%";
+  return `${numeric.toFixed(2)}%`;
+};
+
+const escapeCsvValue = (value) => {
+  if (value === undefined || value === null) return "";
+  const text = String(value);
+  if (/[",\n\r]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
   }
-  return { filename: `${dataset.name}_export.csv`, csvContent: csvLines.join("\n") };
+  return text;
+};
+
+const toCsvRow = (values) => values.map(escapeCsvValue).join(",");
+
+const buildBusinessReportCsv = ({ dataset, rows, analytics }) => {
+  const summary = analytics?.summary || {};
+  const chartData = analytics?.chartData || [];
+  const forecastData = analytics?.forecastData || [];
+  const insights = analytics?.insights || [];
+  const datasetName = dataset?.name || summary.datasetName || "Active dataset";
+  const generatedOn = new Date().toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  const revenueValues = rows.map((row) => {
+    const raw = row?.data ? (row.data.revenue ?? row.data.Revenue ?? row.data.amount ?? row.data.total ?? row.data.totalRevenue) : undefined;
+    const numeric = Number.parseFloat(String(raw).replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(numeric) ? numeric : 0;
+  });
+  const totalRevenue = revenueValues.reduce((sum, value) => sum + value, 0);
+  const totalOrders = rows.length || 0;
+  const averageOrderValue = totalOrders ? totalRevenue / totalOrders : 0;
+  const customerSet = new Set(rows.map((row) => String(row?.data?.customer || row?.data?.Customer || row?.data?.customerName || row?.data?.customer_name || "").trim()).filter(Boolean));
+  const statuses = rows.map((row) => String(row?.data?.status || row?.data?.Status || row?.data?.payment_status || "").trim().toLowerCase());
+  const completed = statuses.filter((status) => ["paid", "complete", "completed", "success", "delivered"].includes(status)).length;
+  const cancelled = statuses.filter((status) => ["cancelled", "canceled", "cancel", "void"].includes(status)).length;
+  const returned = statuses.filter((status) => ["returned", "return", "refund", "refunded"].includes(status)).length;
+  const completionRate = totalOrders ? (completed / totalOrders) * 100 : 0;
+  const cancellationRate = totalOrders ? (cancelled / totalOrders) * 100 : 0;
+  const returnRate = totalOrders ? (returned / totalOrders) * 100 : 0;
+  const highestMonth = chartData.reduce((best, point) => (point.value > best.value ? { month: point.month, value: point.value } : best), { month: "N/A", value: -Infinity });
+  const lowestMonth = chartData.reduce((best, point) => (point.value < best.value ? { month: point.month, value: point.value } : best), { month: "N/A", value: Infinity });
+  const lastForecast = [...forecastData].reverse().find((point) => point?.forecast !== null && point?.forecast !== undefined);
+  const forecastRevenue = lastForecast?.forecast ?? summary.totalRevenue ?? totalRevenue;
+
+  const summaryLines = [
+    "BUSINESS SUMMARY",
+    toCsvRow(["Metric", "Value"]),
+    toCsvRow(["Dataset", datasetName]),
+    toCsvRow(["Generated On", generatedOn]),
+    toCsvRow(["Total Revenue", formatNumber(totalRevenue)]),
+    toCsvRow(["Total Orders", formatNumber(totalOrders)]),
+    toCsvRow(["Active Customers", formatNumber(customerSet.size)]),
+    toCsvRow(["Average Order Value", formatNumber(averageOrderValue)]),
+    toCsvRow(["Revenue Growth", formatPercent(summary.growth ?? 0)]),
+    toCsvRow(["Highest Revenue Month", highestMonth.month || "N/A"]),
+    toCsvRow(["Lowest Revenue Month", lowestMonth.month || "N/A"]),
+    toCsvRow(["Top Product", "N/A"]),
+    toCsvRow(["Top Customer", "N/A"]),
+    toCsvRow(["Completion Rate", formatPercent(completionRate)]),
+    toCsvRow(["Cancellation Rate", formatPercent(cancellationRate)]),
+    toCsvRow(["Return Rate", formatPercent(returnRate)]),
+    toCsvRow(["Forecast Revenue", formatNumber(forecastRevenue)]),
+  ];
+
+  const productStats = rows.reduce((acc, row) => {
+    const product = String(row?.data?.product || row?.data?.Product || "Unknown").trim();
+    const revenue = Number.parseFloat(String(row?.data?.revenue || row?.data?.Revenue || row?.data?.amount || row?.data?.total || row?.data?.totalRevenue || 0).replace(/[^0-9.-]/g, ""));
+    if (!acc[product]) acc[product] = { name: product, revenue: 0, orders: 0 };
+    acc[product].revenue += Number.isFinite(revenue) ? revenue : 0;
+    acc[product].orders += 1;
+    return acc;
+  }, {});
+  const topProductEntry = Object.values(productStats).sort((left, right) => right.revenue - left.revenue)[0];
+  const customerStats = rows.reduce((acc, row) => {
+    const customer = String(row?.data?.customer || row?.data?.Customer || row?.data?.customerName || row?.data?.customer_name || "Unknown").trim();
+    const revenue = Number.parseFloat(String(row?.data?.revenue || row?.data?.Revenue || row?.data?.amount || row?.data?.total || row?.data?.totalRevenue || 0).replace(/[^0-9.-]/g, ""));
+    if (!acc[customer]) acc[customer] = { name: customer, revenue: 0, orders: 0 };
+    acc[customer].revenue += Number.isFinite(revenue) ? revenue : 0;
+    acc[customer].orders += 1;
+    return acc;
+  }, {});
+  const topCustomerEntry = Object.values(customerStats).sort((left, right) => right.revenue - left.revenue)[0];
+  summaryLines[summaryLines.indexOf(summaryLines.find((line) => line.includes("Top Product")))] = toCsvRow(["Top Product", topProductEntry?.name || "N/A"]);
+  summaryLines[summaryLines.indexOf(summaryLines.find((line) => line.includes("Top Customer")))] = toCsvRow(["Top Customer", topCustomerEntry?.name || "N/A"]);
+
+  const insightLines = [
+    "",
+    "BUSINESS INSIGHTS",
+    toCsvRow(["Title", "Description"]),
+    ...insights.map((insight) => toCsvRow([insight.title || "Insight", insight.detail || ""])),
+  ];
+
+  const transactionHeaders = dataset?.headers?.length ? dataset.headers : Object.keys(rows[0]?.data || {});
+  const transactionLines = [
+    "",
+    "TRANSACTION DATA",
+    toCsvRow(transactionHeaders),
+    ...rows.map((row) => toCsvRow(transactionHeaders.map((header) => row?.data?.[header] ?? ""))),
+  ];
+
+  return `\uFEFF${[...summaryLines, ...insightLines, ...transactionLines].join("\r\n")}`;
+};
+
+const exportDatasetCsv = async (userId, datasetId) => {
+  const activeDataset = await getActiveDataset(userId);
+  const dataset = datasetId ? await findDataset(datasetId, userId) : activeDataset;
+  if (!dataset) throw new Error("Dataset not found");
+  const rows = await datasetRows(dataset._id, userId);
+  const analyticsResult = await getActiveDatasetAnalytics(userId);
+  const csvContent = buildBusinessReportCsv({
+    dataset: { ...dataset, headers: dataset.headers || analyticsResult.dataset?.headers || [] },
+    rows,
+    analytics: analyticsResult.analytics,
+  });
+  return { filename: `${(dataset.name || "business-report").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}_report.csv`, csvContent };
 };
 
 module.exports = {
