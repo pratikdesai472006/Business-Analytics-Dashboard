@@ -28,6 +28,7 @@ const setActiveDataset = async (userId, datasetId) => {
   const now = new Date();
   await Dataset.updateMany({ userId, isActive: true }, { $set: { isActive: false } });
   await Dataset.updateOne({ _id: datasetId, userId }, { $set: { isActive: true, activatedAt: now, updatedAt: now } });
+  clearCachedAnalytics(userId);
 };
 
 const createCsvDataset = async ({ userId, file, headers, rows }) => {
@@ -118,6 +119,7 @@ const activateDataset = async (userId, datasetId) => {
 
 const renameDataset = async (userId, datasetId, name) => {
   const dataset = await Dataset.findOneAndUpdate({ _id: datasetId, userId }, { $set: { name, updatedAt: new Date() } }, { new: true });
+  clearCachedAnalytics(userId);
   return dataset ? dataset.toObject() : null;
 };
 
@@ -131,6 +133,7 @@ const deleteDataset = async (userId, datasetId) => {
   if (dataset.isActive && nextDataset) {
     await setActiveDataset(userId, nextDataset._id);
   }
+  clearCachedAnalytics(userId);
   return { deleted: true, nextDataset };
 };
 
@@ -150,19 +153,23 @@ const setCachedAnalytics = (userId, value) => {
   analyticsCache.set(getAnalyticsCacheKey(userId), { value, timestamp: Date.now() });
 };
 
-const parseCsv = require("../utils/parseCsv");
-const analyticsEngine = require("../utils/analyticsEngine");
+const clearCachedAnalytics = (userId) => {
+  analyticsCache.delete(getAnalyticsCacheKey(userId));
+};
 
 const getActiveDatasetAnalytics = async (userId) => {
   const cached = getCachedAnalytics(userId);
   if (cached) return cached;
   const dataset = await getActiveDataset(userId);
   if (!dataset) return { dataset: null, analytics: null };
-  const rows = await datasetRows(dataset._id, userId);
+  const rows = await datasetRows(dataset._id);
   const analytics = analyticsEngine.buildAnalytics(dataset, rows);
   setCachedAnalytics(userId, analytics);
   return { dataset, analytics };
 };
+
+const parseCsv = require("../utils/parseCsv");
+const analyticsEngine = require("../utils/analyticsEngine");
 
 const processDatasetUpload = async (userId, originalname, csvText) => {
   const { headers, rows } = parseCsv(csvText);
@@ -177,6 +184,7 @@ const processDatasetUpload = async (userId, originalname, csvText) => {
     headers,
     rows,
   });
+  clearCachedAnalytics(userId);
   const analyticsResult = await getActiveDatasetAnalytics(userId);
   return { dataset, analytics: analyticsResult.analytics };
 };
