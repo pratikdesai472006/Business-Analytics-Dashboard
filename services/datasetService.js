@@ -26,7 +26,7 @@ const saveRows = async (datasetId, userId, rows) => {
 
 const setActiveDataset = async (userId, datasetId) => {
   const now = new Date();
-  await Dataset.updateMany({ userId, isActive: true }, { $set: { isActive: false } });
+  await Dataset.updateMany({ userId }, { $set: { isActive: false } });
   await Dataset.updateOne({ _id: datasetId, userId }, { $set: { isActive: true, activatedAt: now, updatedAt: now } });
   clearCachedAnalytics(userId);
 };
@@ -77,16 +77,21 @@ const createManualDataset = async ({ userId, name, rows }) => {
     rowCount: rows.length,
     status: "Processing",
     uploadedAt: new Date(),
+    isActive: false,
   });
   try {
     await saveRows(dataset._id, userId, rows);
     dataset.rowCount = rows.length;
     dataset.status = "Processed";
     dataset.processedAt = new Date();
-    await dataset.save();
-    await setActiveDataset(userId, dataset._id);
-    dataset.isActive = true;
-    dataset.activatedAt = new Date();
+    const hasActive = await Dataset.findOne({ userId, isActive: true });
+    if (!hasActive) {
+      await setActiveDataset(userId, dataset._id);
+      dataset.isActive = true;
+      dataset.activatedAt = new Date();
+    } else {
+      dataset.isActive = false;
+    }
     await dataset.save();
     return dataset;
   } catch (error) {
@@ -99,9 +104,12 @@ const createManualDataset = async ({ userId, name, rows }) => {
 const listDatasets = (userId) => Dataset.find({ userId }).sort({ createdAt: -1 }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
 const findDataset = (id, userId) => Dataset.findOne({ _id: id, userId }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
 const getActiveDataset = async (userId) => {
-  let dataset = await Dataset.findOne({ userId, isActive: true }).sort({ updatedAt: -1 }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
+  let dataset = await Dataset.findOne({ userId, isActive: true }).sort({ activatedAt: -1, updatedAt: -1 }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
   if (!dataset) {
-    dataset = await Dataset.findOne({ userId }).sort({ createdAt: -1 }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
+    dataset = await Dataset.findOne({ userId, type: "csv" }).sort({ createdAt: -1 }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
+    if (!dataset) {
+      dataset = await Dataset.findOne({ userId }).sort({ createdAt: -1 }).select("_id name type source fileSize rowCount headers status isActive uploadedAt processedAt activatedAt createdAt updatedAt").lean();
+    }
     if (dataset) {
       await setActiveDataset(userId, dataset._id);
       dataset.isActive = true;
