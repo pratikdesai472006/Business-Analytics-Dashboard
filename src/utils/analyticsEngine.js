@@ -1,12 +1,27 @@
 const toNumber = (value) => {
-  const parsed = Number(value);
+  if (value === undefined || value === null || value === "") return 0;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const cleaned = String(value).replace(/[^0-9.-]/g, "");
+  const parsed = parseFloat(cleaned);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
 const pickValue = (row, keys) => {
+  if (!row || !row.data) return undefined;
   for (const key of keys) {
-    const value = row?.data?.[key];
-    if (value !== undefined && value !== null && value !== "") return value;
+    const value = row.data[key];
+    if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+  }
+  const entries = Object.entries(row.data);
+  for (const targetKey of keys) {
+    const targetNorm = targetKey.toLowerCase().replace(/[^a-z0-9]/g, "");
+    for (const [actualKey, val] of entries) {
+      if (val === undefined || val === null || String(val).trim() === "") continue;
+      const actualNorm = actualKey.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (actualNorm === targetNorm || actualNorm.includes(targetNorm) || targetNorm.includes(actualNorm)) {
+        return val;
+      }
+    }
   }
   return undefined;
 };
