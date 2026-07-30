@@ -171,16 +171,58 @@ const processDatasetUpload = async (userId, originalname, csvText) => {
   return { dataset, analytics: analyticsResult.analytics };
 };
 
+const getUserDatasets = listDatasets;
+
+const getDatasetRows = async (userId, datasetId, page = 1, limit = 50) => {
+  const allRows = await datasetRows(datasetId, userId);
+  const total = allRows.length;
+  const startIndex = (page - 1) * limit;
+  const paginated = allRows.slice(startIndex, startIndex + limit);
+  return { rows: paginated, total, page, limit };
+};
+
+const getDatasetFile = async (userId, datasetId) => {
+  const dataset = await findDataset(datasetId, userId);
+  if (!dataset || !dataset.fileId) throw new Error("File not found");
+  const stream = downloadFile(dataset.fileId);
+  const chunks = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+  return { filename: dataset.name, content: Buffer.concat(chunks) };
+};
+
+const exportDatasetCsv = async (userId, datasetId) => {
+  const dataset = await findDataset(datasetId, userId);
+  if (!dataset) throw new Error("Dataset not found");
+  const rows = await datasetRows(datasetId, userId);
+  const headers = dataset.headers || Object.keys(rows[0]?.data || {});
+  const csvLines = [headers.join(",")];
+  for (const r of rows) {
+    const values = headers.map((h) => {
+      const val = r.data[h] ?? "";
+      return typeof val === "string" && val.includes(",") ? `"${val}"` : val;
+    });
+    csvLines.push(values.join(","));
+  }
+  return { filename: `${dataset.name}_export.csv`, csvContent: csvLines.join("\n") };
+};
+
 module.exports = {
   createCsvDataset,
   createManualDataset,
   listDatasets,
+  getUserDatasets,
   findDataset,
   getActiveDataset,
   getActiveDatasetAnalytics,
   processDatasetUpload,
   datasetRows,
+  getDatasetRows,
+  getDatasetFile,
+  exportDatasetCsv,
   activateDataset,
+  setActiveDataset,
   renameDataset,
   deleteDataset,
   downloadFile,
