@@ -34,4 +34,4 @@ const sendDueReminders = async () => {
   return orders.length;
 };
 
-module.exports = { sendDueReminders };
+module.exports = { sendDueReminders, processPaymentReminders: sendDueReminders };

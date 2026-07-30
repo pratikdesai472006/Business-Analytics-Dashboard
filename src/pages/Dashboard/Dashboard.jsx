@@ -39,17 +39,21 @@ function Dashboard() {
     const headers = { headers: { Authorization: `Bearer ${token}` } };
     if (force) clearAnalyticsCache();
     setLoading(true);
+
     try {
-      const [ordersRes, analyticsRes] = await Promise.all([
-        api.get("/orders", headers),
-        fetchActiveAnalytics(api, headers, force),
-      ]);
-      setOrders(ordersRes.data.orders || []);
+      const analyticsRes = await fetchActiveAnalytics(api, headers, force);
       setAnalytics(analyticsRes.data);
     } catch (err) {
-      console.error("Dashboard refresh error:", err);
-      setOrders([]);
+      console.error("Dashboard analytics error:", err);
       setAnalytics(null);
+    }
+
+    try {
+      const ordersRes = await api.get("/orders", headers);
+      setOrders(ordersRes.data.orders || []);
+    } catch (err) {
+      console.error("Dashboard orders error:", err);
+      setOrders([]);
     } finally {
       setLoading(false);
     }

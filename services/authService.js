@@ -5,4 +5,4 @@ const createUser = (fullName, email, password) =>
   User.create({ fullName, email: email.toLowerCase(), password });
 const findUserById = (id) => User.findById(id).select("fullName email");
 
-module.exports = { findUserByEmail, createUser, findUserById };
+module.exports = { findUserByEmail, createUser, findUserById, getUserProfile: findUserById };
